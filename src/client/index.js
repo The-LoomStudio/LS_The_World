@@ -1,4 +1,5 @@
 import { createWeatherEffectController } from './weather-effects.js'
+import { skyCssAt } from './sky-gradient.js'
 /** The World official client module. */
 
 export function activate(context) {
@@ -121,13 +122,7 @@ function weatherGlyph(kind) {
   return ({ clear: '☀️', rain: '🌧️', snow: '❄️', storm: '⛈️', fog: '🌫️', custom: '✨' })[kind] ?? '🌤️'
 }
 
-function skyPreview(hour, minute) {
-  const t = (hour * 60 + minute) / 1440
-  if (t < 0.2 || t > 0.88) return 'linear-gradient(180deg,#071329,#18294c 58%,#0a1020)'
-  if (t < 0.32) return 'linear-gradient(180deg,#17254a,#c16d72 58%,#271b35)'
-  if (t < 0.78) return 'linear-gradient(180deg,#5d9bd1,#f3d3a0 58%,#88a8b8)'
-  return 'linear-gradient(180deg,#263d73,#e18b6c 58%,#49345a)'
-}
+function skyPreview(hour, minute) { return skyCssAt(hour, minute) }
 
 function renderMap(container, list, edges) {
   const width = Math.max(520, list.length * 150)
