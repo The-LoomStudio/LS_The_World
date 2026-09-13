@@ -1,3 +1,4 @@
+import { createWeatherEffectController } from './weather-effects.js'
 /** The World official client module. */
 
 export function activate(context) {
@@ -44,6 +45,7 @@ export function activate(context) {
       const entities = document.createElement('section')
       entities.style.cssText = 'display:grid;gap:8px;'
       const weather = document.createElement('div')
+      const weatherEffects = createWeatherEffectController(weather)
       weather.style.cssText = 'padding:10px;border-radius:8px;background:color-mix(in srgb,currentColor 8%,transparent);'
       const relations = document.createElement('section')
       relations.style.cssText = 'display:grid;gap:6px;'
@@ -58,7 +60,8 @@ export function activate(context) {
         const list = world && world.entities && typeof world.entities === 'object' ? Object.entries(world.entities) : []
         const weatherEntry = list.find(([, entity]) => entity?.components?.weather)?.[1]?.components?.weather
         const backgroundEntry = list.find(([, entity]) => entity?.components?.background)?.[1]?.components?.background
-        weather.textContent = weatherEntry ? `${weatherGlyph(weatherEntry.kind)}  ${weatherEntry.label ?? weatherEntry.kind}${weatherEntry.intensity == null ? '' : ` · 强度 ${weatherEntry.intensity}`}` : '☀️  天气：未设置'
+        weatherEffects.set(weatherEntry?.kind ?? 'clear', weatherEntry?.intensity ?? 0)
+        weather.textContent += weatherEntry ? `  ${weatherEntry.label ?? weatherEntry.kind}${weatherEntry.intensity == null ? '' : ` · 强度 ${weatherEntry.intensity}`}` : '  天气：未设置'
         weather.dataset.kind = weatherEntry?.kind ?? 'clear'
         const timeEntry = list.find(([, entity]) => entity?.components?.worldTime)?.[1]?.components?.worldTime?.value
         weather.style.background = skyPreview(timeEntry?.hour ?? 12, timeEntry?.minute ?? 0)
