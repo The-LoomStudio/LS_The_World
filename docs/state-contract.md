@@ -38,3 +38,7 @@
 `src/sky-gradient.ts` 提供纯函数 `skyPaletteAt(hour, minute)` 与 `skyCss(palette)`。宿主在收到新的 `WorldTimeComponent` 后可将结果写入全局背景层：背景图片作为底层，天色渐变作为低不透明度叠层，表面材质仍由宿主外观设置控制。
 
 扩展不会读取系统时钟或直接修改宿主 DOM。正式接入需要宿主提供外观更新 API，以保持 State、背景注册和全局视觉状态之间的边界清晰。
+
+## 资源诊断
+
+`collectResourceDiagnostics()` 扫描地点、场景和背景组件中的资源引用，保留所属实体、资源角色、可用性和失效原因；它只生成诊断，不修改 State 或重新注册资源。
