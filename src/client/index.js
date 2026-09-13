@@ -51,6 +51,8 @@ export function activate(context) {
       weather.style.cssText = 'padding:10px;border-radius:8px;background:color-mix(in srgb,currentColor 8%,transparent);'
       const chronology = document.createElement('div')
       chronology.style.cssText = 'padding:10px;border-radius:8px;background:color-mix(in srgb,currentColor 6%,transparent);'
+      const resources = document.createElement('section')
+      resources.style.cssText = 'display:grid;gap:6px;padding:10px;border-radius:8px;background:color-mix(in srgb,currentColor 6%,transparent);'
       const relations = document.createElement('section')
       relations.style.cssText = 'display:grid;gap:6px;'
       const map = document.createElement('div')
@@ -71,6 +73,18 @@ export function activate(context) {
         renderChronology(chronology, list)
         weather.style.background = skyPreview(timeEntry?.hour ?? 12, timeEntry?.minute ?? 0)
         if (backgroundEntry) weather.textContent += ` ｜ 背景：${backgroundEntry.name ?? backgroundEntry.id}${backgroundEntry.availability?.status === 'available' ? '' : '（资源不可用）'}`
+        const refs = list.flatMap(([entityId, entity]) => [
+          ...(entity?.components?.place?.resources ?? []),
+          ...(entity?.components?.scene?.resources ?? []),
+          ...(entity?.components?.background?.asset ? [entity.components.background.asset] : []),
+        ].map(resource => ({ entityId, resource })))
+        const missing = refs.filter(item => item.resource.availability?.status !== 'available')
+        resources.replaceChildren(
+          Object.assign(document.createElement('strong'), { textContent: `资源：${refs.length} · 可用 ${refs.length - missing.length} · 异常 ${missing.length}` }),
+          ...(missing.length ? missing.map(({ entityId, resource }) => Object.assign(document.createElement('div'), {
+            textContent: `${entityId} · ${resource.label ?? resource.id}（${resource.availability?.status ?? 'unknown'}）`,
+          })) : [Object.assign(document.createElement('span'), { textContent: '没有失效资源引用' })]),
+        )
         summary.replaceChildren(...[
           ['revision', result?.revisionId ?? '—'],
           ['实体', String(list.length)],
@@ -114,10 +128,11 @@ export function activate(context) {
           summary.replaceChildren()
           entities.replaceChildren()
           chronology.replaceChildren()
+          resources.replaceChildren()
           pre.textContent = error instanceof Error ? error.message : String(error)
         }).finally(() => { submit.disabled = false })
       })
-      root.append(title, form, status, weather, chronology, summary, map, relations, entities, pre)
+      root.append(title, form, status, weather, chronology, resources, summary, map, relations, entities, pre)
     },
   })
   const command = context.commands.register('official.the-world.activate-background', invocation => {
