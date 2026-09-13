@@ -31,3 +31,12 @@ The World 提供底层 State、分支感知的读取/更新、地点关系、日
 ## 远程更新
 
 `update-manifest.json` 是宿主试验远程更新时使用的最小清单。正式接入时，宿主应先校验 `packageId`、Manifest 版本和发布渠道，再下载对应 Release 归档；扩展本身不在运行时执行远程代码。
+
+## 独立仓库本地验证
+
+独立仓库默认不携带依赖目录。若在 LoomStudio 单仓库环境中验证，可从主仓库运行：
+
+```bash
+pnpm exec tsx /Users/macbookair/Desktop/LS_The_World/scripts/smoke.ts
+pnpm exec tsc -p /Users/macbookair/Desktop/LS_The_World/tsconfig.json --noEmit
+```
