@@ -115,7 +115,11 @@ export function activate(context) {
       root.append(title, form, status, weather, summary, map, relations, entities, pre)
     },
   })
-  return { dispose() { void renderer.dispose(); void background.dispose() } }
+  const command = context.commands.register('official.the-world.activate-background', invocation => {
+    const id = invocation?.arguments?.id
+    if (typeof id !== 'string' || !context.backgrounds.activate(id)) throw new Error(`The World background was not found: ${String(id)}`)
+  })
+  return { dispose() { void renderer.dispose(); void background.dispose(); void command.dispose() } }
 }
 
 function weatherGlyph(kind) {

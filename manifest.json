@@ -19,6 +19,12 @@
       "runtime": "client",
       "entry": "./src/client/index.js",
       "contributes": {
+        "commands": [
+          {
+            "id": "official.the-world.activate-background",
+            "title": "The World：激活背景"
+          }
+        ],
         "renderers": [
           {
             "id": "official.the-world.debugger",
