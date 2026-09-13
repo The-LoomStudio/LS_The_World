@@ -1,9 +1,9 @@
 {
   "manifestVersion": 2,
   "id": "official.the-world",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "displayName": "The World",
-  "description": "The World State / EC 数据合同与分支感知的读取入口。",
+  "description": "Loom Studio 官方世界状态扩展：地点、场景、时间、日历、背景与天气的 State / EC 数据层。",
   "author": "Loom Studio",
   "engines": {
     "studio": "^0.1.0"
