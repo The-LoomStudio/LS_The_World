@@ -60,6 +60,8 @@ export function activate(context) {
         const backgroundEntry = list.find(([, entity]) => entity?.components?.background)?.[1]?.components?.background
         weather.textContent = weatherEntry ? `天气：${weatherEntry.label ?? weatherEntry.kind}${weatherEntry.intensity == null ? '' : ` · 强度 ${weatherEntry.intensity}`}` : '天气：未设置'
         weather.dataset.kind = weatherEntry?.kind ?? 'clear'
+        const timeEntry = list.find(([, entity]) => entity?.components?.worldTime)?.[1]?.components?.worldTime?.value
+        weather.style.background = skyPreview(timeEntry?.hour ?? 12, timeEntry?.minute ?? 0)
         if (backgroundEntry) weather.textContent += ` ｜ 背景：${backgroundEntry.name ?? backgroundEntry.id}${backgroundEntry.availability?.status === 'available' ? '' : '（资源不可用）'}`
         summary.replaceChildren(...[
           ['revision', result?.revisionId ?? '—'],
@@ -110,6 +112,14 @@ export function activate(context) {
     },
   })
   return { dispose() { void renderer.dispose(); void background.dispose() } }
+}
+
+function skyPreview(hour, minute) {
+  const t = (hour * 60 + minute) / 1440
+  if (t < 0.2 || t > 0.88) return 'linear-gradient(180deg,#071329,#18294c 58%,#0a1020)'
+  if (t < 0.32) return 'linear-gradient(180deg,#17254a,#c16d72 58%,#271b35)'
+  if (t < 0.78) return 'linear-gradient(180deg,#5d9bd1,#f3d3a0 58%,#88a8b8)'
+  return 'linear-gradient(180deg,#263d73,#e18b6c 58%,#49345a)'
 }
 
 function renderMap(container, list, edges) {
