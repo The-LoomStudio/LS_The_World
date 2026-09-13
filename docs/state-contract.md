@@ -32,3 +32,9 @@
 4. 操作仅表达实体/组件的 upsert、删除和替换；真正提交时由 State 生成 revision 与 changeset，旧 revision 保留供追踪。
 
 服务端模块已通过公开 `context.state.read/write` 接入读写 RPC；迁移解析和 mutation 生成仍是显式调用，不写入世界书、不自动合并或回滚。
+
+## 动态天色
+
+`src/sky-gradient.ts` 提供纯函数 `skyPaletteAt(hour, minute)` 与 `skyCss(palette)`。宿主在收到新的 `WorldTimeComponent` 后可将结果写入全局背景层：背景图片作为底层，天色渐变作为低不透明度叠层，表面材质仍由宿主外观设置控制。
+
+扩展不会读取系统时钟或直接修改宿主 DOM。正式接入需要宿主提供外观更新 API，以保持 State、背景注册和全局视觉状态之间的边界清晰。
