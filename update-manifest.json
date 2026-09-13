@@ -1,9 +1,9 @@
 {
   "packageId": "official.the-world",
-  "latestVersion": "0.1.3",
+  "latestVersion": "0.1.4",
   "manifestVersion": 2,
-  "releaseTag": "v0.1.3",
+  "releaseTag": "v0.1.4",
   "repository": "https://github.com/The-LoomStudio/LS_The_World",
-  "archive": "https://github.com/The-LoomStudio/LS_The_World/releases/download/v0.1.3/official.the-world-v0.1.3.tar.gz",
+  "archive": "https://github.com/The-LoomStudio/LS_The_World/releases/download/v0.1.4/official.the-world-v0.1.4.tar.gz",
   "channel": "stable"
 }

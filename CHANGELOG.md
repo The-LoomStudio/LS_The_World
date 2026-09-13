@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4 - 2026-09-13
+
+- Added resource health diagnostics to the official debugger.
+- Added calendar inspection and controlled background activation.
+
 ## 0.1.3 - 2026-09-13
 
 - Added the controlled background activation command.

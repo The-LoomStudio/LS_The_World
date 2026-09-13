@@ -1,6 +1,6 @@
 {
   "name": "@loom-studio/the-world",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": false,
   "type": "module",
   "description": "The World 官方扩展：State / EC 数据合同与 client/server 入口骨架。",
