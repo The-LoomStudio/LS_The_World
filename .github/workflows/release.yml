@@ -1,0 +1,23 @@
+name: Release The World
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build extension archive
+        run: |
+          mkdir -p artifact/official.the-world
+          cp -R manifest.json package.json README.md LICENSE.md CHANGELOG.md src resources assets docs artifact/official.the-world/
+          tar -czf official.the-world-${GITHUB_REF_NAME}.tar.gz -C artifact official.the-world
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: official.the-world-${GITHUB_REF_NAME}.tar.gz
