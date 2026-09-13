@@ -1,7 +1,7 @@
 {
   "manifestVersion": 2,
   "id": "official.the-world",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "The World",
   "description": "Loom Studio 官方世界状态扩展：地点、场景、时间、日历、背景与天气的 State / EC 数据层。",
   "author": "Loom Studio",

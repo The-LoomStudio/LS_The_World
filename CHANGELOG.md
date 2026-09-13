@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 - 2026-09-13
+
+- Added structured import UI contract and release validation.
+
 ## 0.1.0 - 2026-09-13
 
 - Initial standalone repository for the Loom Studio official The World extension.
