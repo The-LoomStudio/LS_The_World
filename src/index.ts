@@ -7,4 +7,3 @@ export * from './media-model.js'
 export * from './importer.js'
 export * from './calendar-model.js'
 
-export * from './client/audio-controller.js'
