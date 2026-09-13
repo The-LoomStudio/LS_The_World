@@ -48,6 +48,8 @@ export function activate(context) {
       const weather = document.createElement('div')
       const weatherEffects = createWeatherEffectController(weather)
       weather.style.cssText = 'padding:10px;border-radius:8px;background:color-mix(in srgb,currentColor 8%,transparent);'
+      const chronology = document.createElement('div')
+      chronology.style.cssText = 'padding:10px;border-radius:8px;background:color-mix(in srgb,currentColor 6%,transparent);'
       const relations = document.createElement('section')
       relations.style.cssText = 'display:grid;gap:6px;'
       const map = document.createElement('div')
@@ -65,6 +67,10 @@ export function activate(context) {
         weather.textContent += weatherEntry ? `  ${weatherEntry.label ?? weatherEntry.kind}${weatherEntry.intensity == null ? '' : ` · 强度 ${weatherEntry.intensity}`}` : '  天气：未设置'
         weather.dataset.kind = weatherEntry?.kind ?? 'clear'
         const timeEntry = list.find(([, entity]) => entity?.components?.worldTime)?.[1]?.components?.worldTime?.value
+        const calendarEntry = list.find(([, entity]) => entity?.components?.calendar)?.[1]?.components?.calendar
+        chronology.textContent = timeEntry
+          ? `时间：${timeEntry.year}-${timeEntry.month}-${timeEntry.day} ${String(timeEntry.hour).padStart(2, '0')}:${String(timeEntry.minute).padStart(2, '0')} · 日历：${calendarEntry?.name ?? timeEntry.calendarId}`
+          : '时间：未设置'
         weather.style.background = skyPreview(timeEntry?.hour ?? 12, timeEntry?.minute ?? 0)
         if (backgroundEntry) weather.textContent += ` ｜ 背景：${backgroundEntry.name ?? backgroundEntry.id}${backgroundEntry.availability?.status === 'available' ? '' : '（资源不可用）'}`
         summary.replaceChildren(...[
@@ -112,7 +118,7 @@ export function activate(context) {
           pre.textContent = error instanceof Error ? error.message : String(error)
         }).finally(() => { submit.disabled = false })
       })
-      root.append(title, form, status, weather, summary, map, relations, entities, pre)
+      root.append(title, form, status, weather, chronology, summary, map, relations, entities, pre)
     },
   })
   const command = context.commands.register('official.the-world.activate-background', invocation => {
