@@ -47,6 +47,8 @@ export function activate(context) {
       weather.style.cssText = 'padding:10px;border-radius:8px;background:color-mix(in srgb,currentColor 8%,transparent);'
       const relations = document.createElement('section')
       relations.style.cssText = 'display:grid;gap:6px;'
+      const map = document.createElement('div')
+      map.style.cssText = 'min-height:220px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:8px;overflow:auto;'
       const relationsTitle = document.createElement('h3')
       relationsTitle.textContent = '地点关系'
       relationsTitle.style.margin = '0'
@@ -70,6 +72,7 @@ export function activate(context) {
           return card
         }))
         const edges = list.flatMap(([id, entity]) => (entity?.components?.place?.connections ?? []).map(connection => ({ from: id, ...connection })))
+        renderMap(map, list, edges)
         relations.replaceChildren(relationsTitle, ...(edges.length ? edges.map(edge => {
           const item = document.createElement('div')
           item.style.cssText = 'padding:8px;border-left:3px solid currentColor;opacity:.85;'
@@ -103,10 +106,29 @@ export function activate(context) {
           pre.textContent = error instanceof Error ? error.message : String(error)
         }).finally(() => { submit.disabled = false })
       })
-      root.append(title, form, status, weather, summary, relations, entities, pre)
+      root.append(title, form, status, weather, summary, map, relations, entities, pre)
     },
   })
   return { dispose() { void renderer.dispose(); void background.dispose() } }
+}
+
+function renderMap(container, list, edges) {
+  const width = Math.max(520, list.length * 150)
+  const height = 210
+  const positions = new Map(list.map(([id, entity], index) => {
+    const point = entity?.components?.place?.position
+    return [id, { x: point?.x ?? 70 + (index % 4) * 130, y: point?.y ?? 70 + Math.floor(index / 4) * 80 }]
+  }))
+  const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\"', '&quot;')
+  const lines = edges.map(edge => {
+    const from = positions.get(edge.from), to = positions.get(edge.toPlaceId)
+    return from && to ? `<line x1=\"${from.x}\" y1=\"${from.y}\" x2=\"${to.x}\" y2=\"${to.y}\" stroke=\"currentColor\" stroke-opacity=\".35\"/><text x=\"${(from.x + to.x) / 2}\" y=\"${(from.y + to.y) / 2 - 5}\" font-size=\"10\" fill=\"currentColor\">${esc(edge.label ?? edge.relation)}</text>` : ''
+  }).join('')
+  const nodes = list.map(([id, entity]) => {
+    const point = positions.get(id)
+    return `<g><circle cx=\"${point.x}\" cy=\"${point.y}\" r=\"24\" fill=\"currentColor\" fill-opacity=\".12\" stroke=\"currentColor\" stroke-opacity=\".5\"/><text x=\"${point.x}\" y=\"${point.y + 4}\" text-anchor=\"middle\" font-size=\"11\" fill=\"currentColor\">${esc(entity?.components?.place?.name ?? id).slice(0, 18)}</text></g>`
+  }).join('')
+  container.innerHTML = `<svg viewBox=\"0 0 ${width} ${height}\" width=\"100%\" height=\"${height}\" role=\"img\" aria-label=\"The World 地点关系图\"><title>The World 地点关系图</title>${lines}${nodes}</svg>`
 }
 
 export default { activate }
