@@ -1,4 +1,5 @@
 import type { WorldEntity, WorldStateSnapshot, WorldTimeValue } from './contracts.js'
+import { summarizeResourceDiagnostics } from './resource-diagnostics.js'
 
 export type WorldDebugProjection = {
   places: Array<{ id: string; name: string; parentPlaceId?: string; connectionCount: number }>
@@ -6,6 +7,7 @@ export type WorldDebugProjection = {
   calendars: Array<{ id: string; name: string; monthCount: number }>
   backgrounds: Array<{ id: string; name: string; available: boolean }>
   weather?: { kind: string; label?: string; intensity?: number }
+  resources: ReturnType<typeof summarizeResourceDiagnostics>
 }
 
 export function projectWorldDebug(snapshot: WorldStateSnapshot): WorldDebugProjection {
@@ -24,7 +26,7 @@ export function projectWorldDebug(snapshot: WorldStateSnapshot): WorldDebugProje
   places.sort((a, b) => a.name.localeCompare(b.name))
   calendars.sort((a, b) => a.name.localeCompare(b.name))
   backgrounds.sort((a, b) => a.name.localeCompare(b.name))
-  return { places, calendars, backgrounds, ...(currentTime ? { currentTime } : {}), ...(weather ? { weather } : {}) }
+  return { places, calendars, backgrounds, resources: summarizeResourceDiagnostics(snapshot.entities), ...(currentTime ? { currentTime } : {}), ...(weather ? { weather } : {}) }
 }
 
 export function buildLocatorText(snapshot: WorldStateSnapshot): string {
