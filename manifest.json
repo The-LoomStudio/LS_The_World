@@ -1,0 +1,75 @@
+{
+  "manifestVersion": 2,
+  "id": "official.the-world",
+  "version": "0.0.0",
+  "displayName": "The World",
+  "description": "The World State / EC 数据合同与分支感知的读取入口。",
+  "author": "Loom Studio",
+  "engines": {
+    "studio": "^0.1.0"
+  },
+  "tags": [
+    "world",
+    "map",
+    "weather"
+  ],
+  "modules": [
+    {
+      "id": "client",
+      "runtime": "client",
+      "entry": "./src/client/index.js",
+      "contributes": {
+        "renderers": [
+          {
+            "id": "official.the-world.debugger",
+            "name": "The World 调试台",
+            "surface": "shell.workspace-panel",
+            "instanceScope": "workspace",
+            "adapter": "direct",
+            "fallback": "hidden"
+          }
+        ]
+      }
+    },
+    {
+      "id": "server",
+      "runtime": "server",
+      "entry": "./src/server/index.js",
+      "capabilities": {
+        "state.read": true,
+        "state.write": true,
+        "state.contribute": true
+      },
+      "contributes": {
+        "rpc": [
+          {
+            "name": "official.the-world.readWorldState"
+          },
+          {
+            "name": "official.the-world.writeWorldState"
+          }
+        ],
+        "agentToolHandlers": [
+          {
+            "toolId": "official.the-world/read-world-state"
+          },
+          {
+            "toolId": "official.the-world/update-world-state"
+          }
+        ]
+      }
+    }
+  ],
+  "contributes": {
+    "agentTools": [
+      {
+        "id": "official.the-world/read-world-state",
+        "source": "./resources/agent-tools/read-world-state.json"
+      },
+      {
+        "id": "official.the-world/update-world-state",
+        "source": "./resources/agent-tools/update-world-state.json"
+      }
+    ]
+  }
+}

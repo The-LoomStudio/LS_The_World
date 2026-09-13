@@ -1,0 +1,19 @@
+{
+  "name": "更新世界状态",
+  "description": "按 revision 和幂等键更新 The World 的地点、场景、世界时间、日历或背景实体。",
+  "input": {
+    "kind": "structured",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "timelineId": { "type": "string" },
+        "branchId": { "type": "string" },
+        "expectedRevisionId": { "type": "string" },
+        "idempotencyKey": { "type": "string" },
+        "patch": { "type": "array", "description": "受限 JSON Patch，只允许修改 /entities 下的 The World 实体", "items": { "type": "object" } }
+      },
+      "required": ["timelineId", "branchId", "expectedRevisionId", "idempotencyKey", "patch"]
+    }
+  },
+  "prompt": { "guidance": "只更新 The World 自己的实体；revision 冲突时重新读取状态，不要覆盖其他模块数据。" }
+}

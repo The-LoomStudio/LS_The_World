@@ -1,0 +1,17 @@
+{
+  "name": "@loom-studio/the-world",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "description": "The World 官方扩展：State / EC 数据合同与 client/server 入口骨架。",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/The-LoomStudio/LS_The_World.git"
+  },
+  "bugs": {
+    "url": "https://github.com/The-LoomStudio/LS_The_World/issues"
+  }
+}

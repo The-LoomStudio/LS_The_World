@@ -1,0 +1,19 @@
+{
+  "name": "读取世界状态",
+  "description": "读取当前叙事 Timeline / Branch 的 The World 地点、场景、时间、日历和背景状态。",
+  "input": {
+    "kind": "structured",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "timelineId": { "type": "string", "description": "目标 Timeline ID" },
+        "branchId": { "type": "string", "description": "目标 Branch ID" },
+        "entityId": { "type": "string", "description": "可选的实体 ID" }
+      },
+      "required": ["timelineId", "branchId"]
+    }
+  },
+  "prompt": {
+    "guidance": "只读取明确提供的 Timeline 和 Branch，不要根据系统时间猜测世界时间。"
+  }
+}
