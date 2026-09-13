@@ -58,7 +58,7 @@ export function activate(context) {
         const list = world && world.entities && typeof world.entities === 'object' ? Object.entries(world.entities) : []
         const weatherEntry = list.find(([, entity]) => entity?.components?.weather)?.[1]?.components?.weather
         const backgroundEntry = list.find(([, entity]) => entity?.components?.background)?.[1]?.components?.background
-        weather.textContent = weatherEntry ? `天气：${weatherEntry.label ?? weatherEntry.kind}${weatherEntry.intensity == null ? '' : ` · 强度 ${weatherEntry.intensity}`}` : '天气：未设置'
+        weather.textContent = weatherEntry ? `${weatherGlyph(weatherEntry.kind)}  ${weatherEntry.label ?? weatherEntry.kind}${weatherEntry.intensity == null ? '' : ` · 强度 ${weatherEntry.intensity}`}` : '☀️  天气：未设置'
         weather.dataset.kind = weatherEntry?.kind ?? 'clear'
         const timeEntry = list.find(([, entity]) => entity?.components?.worldTime)?.[1]?.components?.worldTime?.value
         weather.style.background = skyPreview(timeEntry?.hour ?? 12, timeEntry?.minute ?? 0)
@@ -112,6 +112,10 @@ export function activate(context) {
     },
   })
   return { dispose() { void renderer.dispose(); void background.dispose() } }
+}
+
+function weatherGlyph(kind) {
+  return ({ clear: '☀️', rain: '🌧️', snow: '❄️', storm: '⛈️', fog: '🌫️', custom: '✨' })[kind] ?? '🌤️'
 }
 
 function skyPreview(hour, minute) {
