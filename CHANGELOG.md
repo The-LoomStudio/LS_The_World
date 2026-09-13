@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 - 2026-09-13
+
+- Published the smooth browser sky preview and reusable weather effects.
+
 ## 0.1.1 - 2026-09-13
 
 - Added structured import UI contract and release validation.
