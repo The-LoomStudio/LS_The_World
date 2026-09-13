@@ -8,3 +8,4 @@ export * from './importer.js'
 export * from './calendar-model.js'
 
 export * from './sky-gradient.js'
+export * from './migration-report.js'
