@@ -1,5 +1,6 @@
 import { createWeatherEffectController } from './weather-effects.js'
 import { skyCssAt } from './sky-gradient.js'
+import { renderChronology } from './chronology.js'
 /** The World official client module. */
 
 export function activate(context) {
@@ -67,10 +68,7 @@ export function activate(context) {
         weather.textContent += weatherEntry ? `  ${weatherEntry.label ?? weatherEntry.kind}${weatherEntry.intensity == null ? '' : ` · 强度 ${weatherEntry.intensity}`}` : '  天气：未设置'
         weather.dataset.kind = weatherEntry?.kind ?? 'clear'
         const timeEntry = list.find(([, entity]) => entity?.components?.worldTime)?.[1]?.components?.worldTime?.value
-        const calendarEntry = list.find(([, entity]) => entity?.components?.calendar)?.[1]?.components?.calendar
-        chronology.textContent = timeEntry
-          ? `时间：${timeEntry.year}-${timeEntry.month}-${timeEntry.day} ${String(timeEntry.hour).padStart(2, '0')}:${String(timeEntry.minute).padStart(2, '0')} · 日历：${calendarEntry?.name ?? timeEntry.calendarId}`
-          : '时间：未设置'
+        renderChronology(chronology, list)
         weather.style.background = skyPreview(timeEntry?.hour ?? 12, timeEntry?.minute ?? 0)
         if (backgroundEntry) weather.textContent += ` ｜ 背景：${backgroundEntry.name ?? backgroundEntry.id}${backgroundEntry.availability?.status === 'available' ? '' : '（资源不可用）'}`
         summary.replaceChildren(...[
@@ -115,6 +113,7 @@ export function activate(context) {
           status.textContent = '读取失败'
           summary.replaceChildren()
           entities.replaceChildren()
+          chronology.replaceChildren()
           pre.textContent = error instanceof Error ? error.message : String(error)
         }).finally(() => { submit.disabled = false })
       })
