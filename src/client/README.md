@@ -12,3 +12,5 @@ root.style.setProperty('--the-world-sky', skyCss(palette))
 ```
 
 The World 只负责时间到天色的纯计算；全局背景、图片层、毛玻璃和可读性遮罩由宿主或作者 Renderer 决定。
+
+天气视觉可以通过 `createWeatherEffectController(root)` 接入作者 Renderer；控制器只管理覆盖层状态，不接管宿主布局。
