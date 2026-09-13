@@ -43,6 +43,12 @@ export function activate(context) {
       pre.style.cssText = 'margin:0;white-space:pre-wrap;overflow:auto;font:12px/1.5 ui-monospace,monospace;'
       const entities = document.createElement('section')
       entities.style.cssText = 'display:grid;gap:8px;'
+      const relations = document.createElement('section')
+      relations.style.cssText = 'display:grid;gap:6px;'
+      const relationsTitle = document.createElement('h3')
+      relationsTitle.textContent = '地点关系'
+      relationsTitle.style.margin = '0'
+      relations.append(relationsTitle)
       const render = result => {
         const world = result?.state?.theWorld
         const list = world && world.entities && typeof world.entities === 'object' ? Object.entries(world.entities) : []
@@ -56,6 +62,13 @@ export function activate(context) {
           card.textContent = `${label}: ${value}`
           return card
         }))
+        const edges = list.flatMap(([id, entity]) => (entity?.components?.place?.connections ?? []).map(connection => ({ from: id, ...connection })))
+        relations.replaceChildren(relationsTitle, ...(edges.length ? edges.map(edge => {
+          const item = document.createElement('div')
+          item.style.cssText = 'padding:8px;border-left:3px solid currentColor;opacity:.85;'
+          item.textContent = `${edge.from} → ${edge.toPlaceId} · ${edge.label ?? edge.relation}`
+          return item
+        }) : [Object.assign(document.createElement('p'), { textContent: '暂无地点连接' })]))
         entities.replaceChildren(...list.map(([id, entity]) => {
           const card = document.createElement('article')
           card.style.cssText = 'padding:10px;border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:8px;'
@@ -83,7 +96,7 @@ export function activate(context) {
           pre.textContent = error instanceof Error ? error.message : String(error)
         }).finally(() => { submit.disabled = false })
       })
-      root.append(title, form, status, summary, entities, pre)
+      root.append(title, form, status, summary, relations, entities, pre)
     },
   })
   return { dispose() { void renderer.dispose(); void background.dispose() } }
