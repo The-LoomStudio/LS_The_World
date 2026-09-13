@@ -27,3 +27,7 @@ The World 是 Loom Studio 的官方世界状态扩展。它把地点、场景、
 ## 作者接入边界
 
 The World 提供底层 State、分支感知的读取/更新、地点关系、日历和动态天色计算。作者可以通过自己的 Renderer 读取同一份 State，并自行决定地图、手机界面、HUD 或日历 App 的呈现方式。动态天色函数位于 `src/sky-gradient.ts`，不会自行读取系统时间或修改宿主 DOM。
+
+## 远程更新
+
+`update-manifest.json` 是宿主试验远程更新时使用的最小清单。正式接入时，宿主应先校验 `packageId`、Manifest 版本和发布渠道，再下载对应 Release 归档；扩展本身不在运行时执行远程代码。

@@ -1,0 +1,9 @@
+{
+  "packageId": "official.the-world",
+  "latestVersion": "0.1.0",
+  "manifestVersion": 2,
+  "releaseTag": "v0.1.0",
+  "repository": "https://github.com/The-LoomStudio/LS_The_World",
+  "archive": "https://github.com/The-LoomStudio/LS_The_World/releases/download/v0.1.0/official.the-world-v0.1.0.tar.gz",
+  "channel": "stable"
+}
