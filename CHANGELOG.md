@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3 - 2026-09-13
+
+- Added the controlled background activation command.
+
 ## 0.1.2 - 2026-09-13
 
 - Published the smooth browser sky preview and reusable weather effects.
