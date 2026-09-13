@@ -43,6 +43,8 @@ export function activate(context) {
       pre.style.cssText = 'margin:0;white-space:pre-wrap;overflow:auto;font:12px/1.5 ui-monospace,monospace;'
       const entities = document.createElement('section')
       entities.style.cssText = 'display:grid;gap:8px;'
+      const weather = document.createElement('div')
+      weather.style.cssText = 'padding:10px;border-radius:8px;background:color-mix(in srgb,currentColor 8%,transparent);'
       const relations = document.createElement('section')
       relations.style.cssText = 'display:grid;gap:6px;'
       const relationsTitle = document.createElement('h3')
@@ -52,6 +54,11 @@ export function activate(context) {
       const render = result => {
         const world = result?.state?.theWorld
         const list = world && world.entities && typeof world.entities === 'object' ? Object.entries(world.entities) : []
+        const weatherEntry = list.find(([, entity]) => entity?.components?.weather)?.[1]?.components?.weather
+        const backgroundEntry = list.find(([, entity]) => entity?.components?.background)?.[1]?.components?.background
+        weather.textContent = weatherEntry ? `天气：${weatherEntry.label ?? weatherEntry.kind}${weatherEntry.intensity == null ? '' : ` · 强度 ${weatherEntry.intensity}`}` : '天气：未设置'
+        weather.dataset.kind = weatherEntry?.kind ?? 'clear'
+        if (backgroundEntry) weather.textContent += ` ｜ 背景：${backgroundEntry.name ?? backgroundEntry.id}${backgroundEntry.availability?.status === 'available' ? '' : '（资源不可用）'}`
         summary.replaceChildren(...[
           ['revision', result?.revisionId ?? '—'],
           ['实体', String(list.length)],
@@ -96,7 +103,7 @@ export function activate(context) {
           pre.textContent = error instanceof Error ? error.message : String(error)
         }).finally(() => { submit.disabled = false })
       })
-      root.append(title, form, status, summary, relations, entities, pre)
+      root.append(title, form, status, weather, summary, relations, entities, pre)
     },
   })
   return { dispose() { void renderer.dispose(); void background.dispose() } }
