@@ -5,7 +5,8 @@
   "type": "module",
   "description": "The World 官方扩展：State / EC 数据合同与 client/server 入口骨架。",
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "repository": {
     "type": "git",
