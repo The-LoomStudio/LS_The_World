@@ -94,7 +94,7 @@ ST 允许直接接管 UI、使用任意 CSS、文件名和旧指令，定制自�
 
 ## 当前结果
 
-仅建立目录与 Manifest，并补充“State / EC 为核心数据、调试台与作者自定义 Renderer 分离、世界时间与日历”定位。没有工具、Renderer、资源贡献、数据迁移和媒体复制；背景与材质、扩展 UI 计划仍独立推进。未来接续从本文件核对事实，不把本文建议当作已经实现或批准的合同。
+已建立独立仓库、Manifest、State / EC 合同、调试 Renderer、读写 RPC、Agent Tools、迁移解析与背景注册入口。完整地图交互、ST 导入 UI、天气视觉和 Web Audio 执行层仍属于后续工作；本文件的“当前迁移进度”是实现事实，提案会明确标注。
 
 ## 官方背景注册契约（2026-09-13）
 
@@ -108,7 +108,7 @@ The World 的背景引用由宿主外观状态统一持有。扩展只注册可�
 - WP2 纯数据层：已完成快照校验、分支一致性 mutation、revision 冲突、地点查询和世界时间分钟推进。
 - WP3 显式迁移解析：已完成 `<WorldState>` 与 `<MapUpdate>` 纯函数解析；解析器不访问世界书、localStorage 或 URL，目标分支由导入调用方显式提供。
 - WP3 调试与媒体模型：已完成地图/地点/日历/背景调试投影、Locator 文本投影，以及天气标准化和环境音切换判定；浏览器视觉效果与 Web Audio 执行层仍待接入。
-- WP4 客户端调试台：已完成 `official.the-world.debugger` 的官方 `shell.workspace-panel` Renderer 声明与最小可启用面板；当前显示模块和 workspace 状态，State 数据读取接线继续补充。
+- WP4 客户端调试台：已完成 `official.the-world.debugger` 的官方 `shell.workspace-panel` Renderer 声明与最小可启用面板；当前显示模块和 workspace 状态，State 数据读取已接线，并显示 revision、实体数量、schema 与实体组件摘要。
 - WP4 Agent Tool：已声明并注册 `official.the-world/read-world-state`，读取工具要求显式 Timeline / Branch，可选实体 ID，不根据宿主全局“当前聊天”猜测上下文。
 - WP4 Agent Tool：`official.the-world/update-world-state` 已改为受限 JSON Patch；每次只允许修改 `/entities` 下的路径，写入前检查最新 Revision、目标分支和幂等键，场景不变时可只更新单个组件或字段。
 - WP5 显式导入：已完成 `createLegacyWorldImport()`，把 ST 的 WorldState / MapUpdate 解析结果提升为带目标分支、时间戳和 revision 前置条件的 Loom mutation；导入函数本身无持久化副作用。
