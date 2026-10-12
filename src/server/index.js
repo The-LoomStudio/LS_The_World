@@ -1,174 +1,162 @@
-const RPC_READ_WORLD_STATE = 'official.the-world.readWorldState'
-const RPC_WRITE_WORLD_STATE = 'official.the-world.writeWorldState'
-const COMPONENTS = new Set(['place', 'scene', 'worldTime', 'calendar', 'background', 'weather'])
+import {
+  applyJsonPatch, applyMutation, isRecord, mutationPatch, patchStateOperations,
+  projectCurrentWorld, requiredString, upgradeLegacyWorld, validateWorldRoot,
+} from '../world-state.js'
 
-/**
- * Register the read-only State surface for The World.
- *
- * The host owns State storage and branch isolation. This module only forwards
- * an explicit Timeline / Branch target through the public SDK facade.
- */
+const componentSchemas = {
+  world: { type: 'object', properties: { currentSceneId: { type: 'string', minLength: 1 } }, additionalProperties: false },
+  place: { type: 'object', properties: {
+    name: { type: 'string', minLength: 1 }, description: { type: 'string' }, parentPlaceId: { type: 'string', minLength: 1 },
+    connections: { type: 'array' }, position: { type: 'object' }, facts: { type: 'object' }, resources: { type: 'array' },
+  }, additionalProperties: false },
+  scene: { type: 'object', properties: {
+    name: { type: 'string', minLength: 1 }, description: { type: 'string' }, placeId: { type: 'string', minLength: 1 },
+    participantEntityIds: { type: 'array', items: { type: 'string' } }, resources: { type: 'array' },
+  }, additionalProperties: false },
+  worldTime: { type: 'object', properties: {
+    value: { type: 'object' }, timeZone: { type: 'string' }, paused: { type: 'boolean' },
+  }, additionalProperties: false },
+  calendar: { type: 'object', properties: {
+    id: { type: 'string' }, name: { type: 'string' }, months: { type: 'array' }, weekdays: { type: 'array' },
+    weekStartsOn: { type: 'integer' }, eras: { type: 'array' },
+  }, additionalProperties: false },
+  weather: { type: 'object', properties: {
+    kind: { enum: ['clear', 'rain', 'snow', 'storm', 'fog', 'custom'] }, label: { type: 'string' },
+    intensity: { type: 'number', minimum: 0, maximum: 1 }, startedAt: { type: 'string' },
+  }, additionalProperties: false },
+  background: { type: 'object', properties: {
+    id: { type: 'string' }, asset: { type: 'object' }, name: { type: 'string' }, description: { type: 'string' },
+    source: { type: 'string' }, availability: { type: 'object' },
+  }, additionalProperties: false },
+}
+
 export function activate(context) {
   context.state.contribute({
     id: 'official.the-world.state',
-    entityTypes: [
-      { id: 'official.the-world.entity', collectionPath: 'theWorld.entities', label: 'The World 实体' },
-    ],
-    templates: [{
-      id: 'official.the-world.root',
-      templateVersion: 1,
-      schema: { type: 'object' },
-      initial: { schemaVersion: 1, entities: {} },
-      componentKey: 'theWorld',
+    entityTypes: [{ id: 'official-the-world-entity', collectionPath: 'theWorld.entities', label: 'The World 实体' }],
+    templates: Object.entries(componentSchemas).map(([componentKey, schema]) => ({
+      id: `official.the-world.${componentKey}`, templateVersion: 1, componentKey,
+      targetEntityTypeIds: ['official-the-world-entity'], schema, initial: {},
+    })),
+    entities: [{ typeId: 'official-the-world-entity', entityId: 'world' }],
+    componentMounts: [{
+      templateId: 'official.the-world.world', templateVersion: 1, componentKey: 'world',
+      target: { kind: 'entity', entity: { typeId: 'official-the-world-entity', entityId: 'world' } },
     }],
-    entities: [],
-    componentMounts: [],
-    bindings: [{
-      path: 'theWorld',
-      templateId: 'official.the-world.root',
-      templateVersion: 1,
-      initial: { schemaVersion: 1, entities: {} },
-    }],
+    bindings: [],
   })
-  context.agentTools.register('official.the-world/update-world-state', async input => {
-    const args = input.arguments
-    if (!args || typeof args.timelineId !== 'string' || typeof args.branchId !== 'string' || typeof args.expectedRevisionId !== 'string' || typeof args.idempotencyKey !== 'string' || !Array.isArray(args.patch)) throw new Error('The World update tool arguments are incomplete')
-    const snapshot = await context.state.read({ scope: 'timeline', timelineId: args.timelineId, branchId: args.branchId })
-    const current = readWorldRoot(snapshot.value)
-    if (args.expectedRevisionId !== snapshot.revisionId) throw new Error('The World revision conflict')
-    if (current.branch.timelineId !== args.timelineId || current.branch.branchId !== args.branchId) throw new Error('The World patch branch does not match')
-    const next = applyJsonPatch(current, args.patch)
-    return await context.state.write({
-      target: { scope: 'timeline', timelineId: args.timelineId, branchId: args.branchId },
-      expectedRevisionId: snapshot.revisionId,
-      idempotencyKey: args.idempotencyKey,
-      operations: [{ op: 'set', path: 'theWorld', value: next }],
-    })
-  })
-  context.agentTools.register('official.the-world/read-world-state', async input => {
-    const args = input.arguments
-    if (!args || typeof args.timelineId !== 'string' || typeof args.branchId !== 'string') throw new Error('The World tool requires timelineId and branchId')
-    const snapshot = await context.state.read({ scope: 'timeline', timelineId: args.timelineId, branchId: args.branchId })
-    if (typeof args.entityId !== 'string') return { revisionId: snapshot.revisionId, state: snapshot.value }
-    const root = isRecord(snapshot.value.theWorld) ? snapshot.value.theWorld : null
-    const entities = root && isRecord(root.entities) ? root.entities : null
-    return { revisionId: snapshot.revisionId, entityId: args.entityId, entity: entities && Object.hasOwn(entities, args.entityId) ? entities[args.entityId] : null }
-  })
-  context.rpc.register(RPC_READ_WORLD_STATE, async params => {
-    const input = readInput(params)
-    const snapshot = await context.state.read({
-      scope: 'timeline',
-      timelineId: input.timelineId,
-      branchId: input.branchId,
-    })
 
-    const result = {
-      target: snapshot.target,
-      revisionId: snapshot.revisionId,
-      createdAt: snapshot.createdAt,
-      state: snapshot.value,
+  const read = async (target, entityId, component) => {
+    const snapshot = await context.state.read(target)
+    const root = readWorldRoot(snapshot.value)
+    const result = { target: snapshot.target, revisionId: snapshot.revisionId, createdAt: snapshot.createdAt, state: { theWorld: root } }
+    if (entityId === undefined) {
+      const current = projectCurrentWorld(root)
+      return { ...result, current: { worldId: 'world', sceneId: current.scene?.id ?? null, placeId: current.place?.id ?? null } }
     }
-
-    if (input.entityId === undefined) return result
-
-    const root = isRecord(snapshot.value.theWorld) ? snapshot.value.theWorld : undefined
-    const entities = root && isRecord(root.entities) ? root.entities : undefined
-    const entity = entities && Object.hasOwn(entities, input.entityId) ? entities[input.entityId] : null
-    if (input.component === undefined) return { ...result, entityId: input.entityId, entity }
-
-    const components = isRecord(entity) && isRecord(entity.components) ? entity.components : undefined
-    return {
-      ...result,
-      entityId: input.entityId,
-      component: input.component,
-      value: components && Object.hasOwn(components, input.component) ? components[input.component] : null,
+    const entity = Object.hasOwn(root.entities, entityId) ? root.entities[entityId] : null
+    return component === undefined ? { ...result, entityId, entity } : {
+      ...result, entityId, component,
+      value: entity && Object.hasOwn(entity.components, component) ? entity.components[component] : null,
     }
-  })
-  context.rpc.register(RPC_WRITE_WORLD_STATE, async params => {
-    const input = readWriteInput(params)
-    const snapshot = await context.state.read({ scope: 'timeline', timelineId: input.timelineId, branchId: input.branchId })
-    const current = readWorldRoot(snapshot.value)
-    const next = applyMutation(current, input.mutation, snapshot.revisionId)
+  }
+
+  const write = async (target, expectedRevisionId, key, patch, signal) => {
+    const operations = patchStateOperations(patch)
+    signal?.throwIfAborted()
+    const snapshot = await context.state.read(target)
+    // A stale request can only replay an identical committed request or fail in the State Service.
+    if (snapshot.revisionId === expectedRevisionId) applyJsonPatch(readWorldRoot(snapshot.value), patch)
+    signal?.throwIfAborted()
     const result = await context.state.write({
-      target: { scope: 'timeline', timelineId: input.timelineId, branchId: input.branchId },
-      expectedRevisionId: snapshot.revisionId,
-      idempotencyKey: input.mutation.idempotencyKey,
-      operations: [{ op: 'set', path: 'theWorld', value: next }],
+      target, expectedRevisionId,
+      idempotencyKey: JSON.stringify(['official.the-world', target.timelineId, target.branchId, key]),
+      operations,
     })
-    return { revisionId: result.snapshot.revisionId, changesetId: result.changesetId, state: result.snapshot.value }
+    return { revisionId: result.snapshot.revisionId, changesetId: result.changesetId, state: { theWorld: readWorldRoot(result.snapshot.value) } }
+  }
+
+  context.rpc.register('official.the-world.readWorldState', async params => {
+    const target = readTarget(params)
+    const entityId = params.entityId === undefined ? undefined : requiredString(params.entityId, 'entityId')
+    const component = params.component === undefined ? undefined : requiredString(params.component, 'component')
+    return context.timeline.run(target, () => read(target, entityId, component))
   })
+  context.rpc.register('official.the-world.writeWorldState', async params => {
+    const target = readTarget(params)
+    const mutation = params.mutation
+    if (!isRecord(mutation) || !isRecord(mutation.target)
+      || mutation.target.timelineId !== target.timelineId || mutation.target.branchId !== target.branchId) throw new Error('The World mutation branch does not match')
+    return context.timeline.run(target, ({ signal }) => write(
+      target, requiredString(mutation.expectedRevisionId, 'expectedRevisionId'),
+      requiredString(mutation.idempotencyKey, 'idempotencyKey'), mutationPatch(mutation), signal,
+    ))
+  })
+  context.agentTools.register('official.the-world/read-world-state', async (input, invocation) => {
+    const target = toolTarget(input, invocation)
+    invocation.signal.throwIfAborted()
+    const entityId = input.arguments?.entityId
+    return read(target, entityId === undefined ? undefined : requiredString(entityId, 'entityId'))
+  })
+  context.agentTools.register('official.the-world/update-world-state', async (input, invocation) => {
+    const target = toolTarget(input, invocation)
+    const args = input.arguments
+    if (!isRecord(args)) throw new Error('The World update requires arguments')
+    return write(target, requiredString(args.expectedRevisionId, 'expectedRevisionId'), requiredString(invocation.invocationId, 'invocationId'), args.patch, invocation.signal)
+  })
+
+  context.rpc.register('official.the-world.previewWorldUpgrade', async params => {
+    const target = readTarget(params)
+    return context.timeline.run(target, async () => {
+      const snapshot = await context.state.read(target)
+      const options = readUpgradeOptions(params)
+      return { target, revisionId: snapshot.revisionId, state: upgradeLegacyWorld(snapshot.value?.theWorld, options), options }
+    })
+  })
+  context.rpc.register('official.the-world.commitWorldUpgrade', async params => {
+    const target = readTarget(params)
+    const expectedRevisionId = requiredString(params.expectedRevisionId, 'expectedRevisionId')
+    const key = requiredString(params.idempotencyKey, 'idempotencyKey')
+    const state = validateWorldRoot(params.state)
+    return context.timeline.run(target, async ({ signal }) => {
+      const snapshot = await context.state.read(target)
+      if (snapshot.revisionId === expectedRevisionId) {
+        const expected = upgradeLegacyWorld(snapshot.value?.theWorld, readUpgradeOptions(params))
+        if (JSON.stringify(expected) !== JSON.stringify(state)) throw new Error('The World upgrade preview does not match; preview again')
+      }
+      signal.throwIfAborted()
+      const result = await context.state.write({
+        target, expectedRevisionId,
+        idempotencyKey: JSON.stringify(['official.the-world.upgrade', target.timelineId, target.branchId, key]),
+        operations: [{ op: 'set', path: '/theWorld', value: state }],
+      })
+      return { revisionId: result.snapshot.revisionId, changesetId: result.changesetId, state: { theWorld: readWorldRoot(result.snapshot.value) } }
+    })
+  })
+}
+
+function readUpgradeOptions(params) {
+  return {
+    ...(params.worldEntityId === undefined ? {} : { worldEntityId: requiredString(params.worldEntityId, 'worldEntityId') }),
+    ...(params.currentSceneId === undefined ? {} : { currentSceneId: requiredString(params.currentSceneId, 'currentSceneId') }),
+  }
+}
+
+function toolTarget(input, invocation) {
+  if (!invocation?.narrativeTarget || invocation.narrativeTarget.scope !== 'timeline') throw new Error('The World tool requires a bound Narrative Turn')
+  if (input.arguments && ['timelineId', 'branchId', 'idempotencyKey', 'target'].some(key => Object.hasOwn(input.arguments, key))) throw new Error('The World tool target and invocation identity are supplied by the Host')
+  return invocation.narrativeTarget
+}
+
+function readTarget(params) {
+  if (!isRecord(params)) throw new Error('The World RPC requires a target')
+  return { scope: 'timeline', timelineId: requiredString(params.timelineId, 'timelineId'), branchId: requiredString(params.branchId, 'branchId') }
 }
 
 function readWorldRoot(value) {
-  if (!isRecord(value) || !isRecord(value.theWorld)) throw new Error('The World State root is missing at path theWorld')
-  return value.theWorld
+  if (!isRecord(value) || !isRecord(value.theWorld)) throw new Error('The World State is missing at this checkpoint; explicitly initialize it before use')
+  return validateWorldRoot(value.theWorld)
 }
 
-function applyJsonPatch(snapshot, patch) {
-  const next = structuredClone(snapshot)
-  for (const operation of patch) {
-    if (!isRecord(operation) || !['add', 'replace', 'remove'].includes(operation.op) || typeof operation.path !== 'string') throw new Error('The World JSON Patch operation is invalid')
-    if (!operation.path.startsWith('/entities/') || operation.path.includes('..')) throw new Error('The World JSON Patch path must stay under /entities')
-    const parts = operation.path.split('/').slice(1).map(part => part.replaceAll('~1', '/').replaceAll('~0', '~'))
-    let target = next
-    for (const part of parts.slice(0, -1)) { if (!isRecord(target[part])) { if (operation.op === 'add') target[part] = {}; else throw new Error(`The World JSON Patch path does not exist: ${operation.path}`) } target = target[part] }
-    const key = parts.at(-1)
-    if (!key) throw new Error('The World JSON Patch path is incomplete')
-    if (operation.op === 'remove') { if (!Object.hasOwn(target, key)) throw new Error(`The World JSON Patch path does not exist: ${operation.path}`); delete target[key] }
-    else { if (operation.op === 'replace' && !Object.hasOwn(target, key)) throw new Error(`The World JSON Patch replace path does not exist: ${operation.path}`); target[key] = operation.value }
-  }
-  return next
-}
-
-function applyMutation(snapshot, mutation, revisionId) {
-  if (mutation.schemaVersion !== 1 || mutation.expectedRevisionId !== revisionId) throw new Error('The World mutation schema or revision does not match')
-  if (mutation.target.timelineId !== snapshot.branch.timelineId || mutation.target.branchId !== snapshot.branch.branchId) throw new Error('The World mutation branch does not match')
-  const entities = { ...snapshot.entities }
-  for (const operation of mutation.operations) {
-    if (operation.op === 'upsert-entity') entities[operation.entity.id] = operation.entity
-    else if (operation.op === 'remove-entity') delete entities[operation.entityId]
-    else {
-      const entity = entities[operation.entityId]
-      if (!entity) throw new Error(`The World entity was not found: ${operation.entityId}`)
-      const components = { ...entity.components }
-      if (operation.op === 'set-component') components[operation.component] = operation.value
-      else delete components[operation.component]
-      entities[operation.entityId] = { ...entity, components }
-    }
-  }
-  return { ...snapshot, entities }
-}
-
-function readWriteInput(params) {
-  if (!isRecord(params) || !isRecord(params.mutation)) throw new Error('The World writeWorldState params must contain mutation')
-  const timelineId = requiredString(params.timelineId, 'timelineId')
-  const branchId = requiredString(params.branchId, 'branchId')
-  const mutation = params.mutation
-  if (typeof mutation.expectedRevisionId !== 'string' || typeof mutation.idempotencyKey !== 'string' || !Array.isArray(mutation.operations)) {
-    throw new Error('The World mutation requires expectedRevisionId, idempotencyKey and operations')
-  }
-  return { timelineId, branchId, mutation }
-}
-
-function readInput(params) {
-  if (!isRecord(params)) throw new Error('The World readWorldState params must be an object')
-  const timelineId = requiredString(params.timelineId, 'timelineId')
-  const branchId = requiredString(params.branchId, 'branchId')
-  const entityId = params.entityId === undefined ? undefined : requiredString(params.entityId, 'entityId')
-  const component = params.component === undefined ? undefined : requiredString(params.component, 'component')
-  if (component !== undefined && !COMPONENTS.has(component)) {
-    throw new Error(`The World component is unsupported: ${component}`)
-  }
-  return { timelineId, branchId, entityId, component }
-}
-
-function requiredString(value, field) {
-  if (typeof value !== 'string' || value.trim() === '') throw new Error(`The World ${field} must be a non-empty string`)
-  return value.trim()
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
+export { applyJsonPatch, applyMutation, validateWorldRoot }
 export default { activate }

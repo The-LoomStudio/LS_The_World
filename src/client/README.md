@@ -1,6 +1,6 @@
 # Client module
 
-`src/client/index.js` 是 The World 的官方客户端入口。模块激活时通过 `context.backgrounds.register()` 注册一个可撤销的示例背景，并注册 `official.the-world.debugger` 调试台 Renderer。Renderer 读取 Global State 并显示当前 `theWorld` 摘要；正式作者界面仍应通过自己的 Renderer 消费公开 State。
+`src/client/index.js` 是构建前的客户端激活入口，面板组件位于 `src/client/panel-view.tsx`，通过 esbuild 生成 `dist/client.js`。模块激活时通过 `context.backgrounds.register()` 注册一个可撤销的示例背景，并注册 `official.the-world.debugger` 运行面板 Renderer。Renderer 挂载到 Host 管理的 `shell.focus-surface` 独立运行层，使用 `shadow` 适配器隔离扩展样式，同时保留直接透传 State / RPC 的能力；正式作者界面仍应通过自己的 Renderer 消费公开 State。
 
 ## 动态天色接入
 

@@ -7,7 +7,7 @@ const report = inspectLegacyWorldImport({
   branch: { timelineId: 'timeline-smoke', branchId: 'branch-smoke' },
   revisionId: 'rev-1',
   idempotencyKey: 'smoke-1',
-  now: '2026-09-13T00:00:00.000Z',
+  calendar: { id: 'example', name: '示例历法', months: Array.from({ length: 12 }, (_, index) => ({ id: String(index + 1), name: `${index + 1}月`, days: 30 })) },
   worldStateText: '<WorldState>时间: 2026-09-13 05:30</WorldState>',
 })
 if (report.status === 'error' || report.operationCount !== 1) throw new Error('migration smoke failed')

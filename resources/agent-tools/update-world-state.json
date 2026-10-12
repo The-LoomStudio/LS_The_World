@@ -1,18 +1,29 @@
 {
   "name": "更新世界状态",
-  "description": "按 revision 和幂等键更新 The World 的地点、场景、世界时间、日历或背景实体。",
+  "description": "使用读取所得 revision 更新本轮 Narrative 的世界实体；宿主提供目标与幂等身份。",
   "input": {
     "kind": "structured",
     "schema": {
       "type": "object",
       "properties": {
-        "timelineId": { "type": "string" },
-        "branchId": { "type": "string" },
         "expectedRevisionId": { "type": "string" },
-        "idempotencyKey": { "type": "string" },
-        "patch": { "type": "array", "description": "受限 JSON Patch，只允许修改 /entities 下的 The World 实体", "items": { "type": "object" } }
+        "patch": {
+          "type": "array",
+          "description": "仅 add / replace / remove，路径在 /entities 下。父对象必须存在，数组整体替换；最终状态的引用和自定义历法日期必须有效。",
+          "items": {
+            "type": "object",
+            "properties": {
+              "op": { "type": "string", "enum": ["add", "replace", "remove"] },
+              "path": { "type": "string" },
+              "value": {}
+            },
+            "required": ["op", "path"],
+            "additionalProperties": false
+          }
+        }
       },
-      "required": ["timelineId", "branchId", "expectedRevisionId", "idempotencyKey", "patch"]
+      "required": ["expectedRevisionId", "patch"],
+      "additionalProperties": false
     }
   },
   "prompt": { "guidance": "只更新 The World 自己的实体；revision 冲突时重新读取状态，不要覆盖其他模块数据。" }

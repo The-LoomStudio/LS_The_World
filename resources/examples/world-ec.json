@@ -1,0 +1,30 @@
+{
+  "entities": {
+    "world": {
+      "components": {
+        "world": { "currentSceneId": "arrival" },
+        "calendar": {
+          "id": "harbor-calendar",
+          "name": "港湾历",
+          "months": [
+            { "id": "1", "name": "潮月", "days": 30 },
+            { "id": "2", "name": "风月", "days": 30 }
+          ]
+        },
+        "worldTime": {
+          "value": { "calendarId": "harbor-calendar", "year": 1, "month": 1, "day": 1, "hour": 0, "minute": 0 }
+        },
+        "weather": { "kind": "clear", "label": "晴" }
+      }
+    },
+    "harbor": {
+      "components": { "place": { "name": "港湾" } }
+    },
+    "pier": {
+      "components": { "place": { "name": "码头", "parentPlaceId": "harbor" } }
+    },
+    "arrival": {
+      "components": { "scene": { "name": "抵达码头", "placeId": "pier", "description": "船已靠岸，行李仍在甲板上。" } }
+    }
+  }
+}

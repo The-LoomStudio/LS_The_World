@@ -5,10 +5,12 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "allowJs": false,
+    "jsx": "react-jsx",
+    "noEmit": true,
     "skipLibCheck": true,
     "rootDir": "src",
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

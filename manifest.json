@@ -1,8 +1,10 @@
 {
   "manifestVersion": 2,
   "id": "official.the-world",
+  "participation": "timeline",
   "version": "0.1.4",
   "displayName": "The World",
+  "icon": "./icon.png",
   "description": "Loom Studio 官方世界状态扩展：地点、场景、时间、日历、背景与天气的 State / EC 数据层。",
   "author": "Loom Studio",
   "engines": {
@@ -17,22 +19,31 @@
     {
       "id": "client",
       "runtime": "client",
-      "entry": "./src/client/index.js",
+      "entry": "./dist/client.js",
       "contributes": {
         "commands": [
           {
-            "id": "official.the-world.activate-background",
-            "title": "The World：激活背景"
+            "id": "official.the-world.open-panel",
+            "title": "打开 The World 面板",
+            "icon": "image"
           }
         ],
         "renderers": [
           {
             "id": "official.the-world.debugger",
             "name": "The World 调试台",
-            "surface": "shell.workspace-panel",
+            "surface": "shell.focus-surface",
             "instanceScope": "workspace",
-            "adapter": "direct",
+            "adapter": "shadow",
             "fallback": "hidden"
+          }
+        ],
+        "actions": [
+          {
+            "commandId": "official.the-world.open-panel",
+            "surface": "stage.header.actions",
+            "group": "world",
+            "suggestedOrder": 10
           }
         ]
       }
@@ -53,6 +64,12 @@
           },
           {
             "name": "official.the-world.writeWorldState"
+          },
+          {
+            "name": "official.the-world.previewWorldUpgrade"
+          },
+          {
+            "name": "official.the-world.commitWorldUpgrade"
           }
         ],
         "agentToolHandlers": [
@@ -67,6 +84,24 @@
     }
   ],
   "contributes": {
+    "promptResources": [
+      {
+        "id": "world-state-maintenance",
+        "resourceKind": "lore",
+        "source": "./resources/world-state-maintenance.lore.json"
+      }
+    ],
+    "settings": [
+      {
+        "id": "weather-effects-enabled",
+        "type": "boolean",
+        "label": "启用天气效果",
+        "description": "控制已采用 The World 的当前故事天色、天气粒子和云层。",
+        "default": true,
+        "group": "显示",
+        "suggestedOrder": 10
+      }
+    ],
     "agentTools": [
       {
         "id": "official.the-world/read-world-state",

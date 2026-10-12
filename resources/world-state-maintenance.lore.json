@@ -1,0 +1,55 @@
+{
+  "format": "loom.promptResource",
+  "schemaVersion": 2,
+  "resourceKind": "lore",
+  "rootNode": {
+    "id": "official.the-world.maintenance",
+    "label": "The World 世界状态维护规则",
+    "category": "lore",
+    "kind": "module",
+    "children": [
+      {
+        "id": "official.the-world.maintenance.boundaries",
+        "label": "事实与更新边界",
+        "category": "lore",
+        "kind": "entry",
+        "enabled": true,
+        "capabilities": {
+          "activation": { "kind": "always" },
+          "targetAnchorId": "@lore.stable",
+          "localDepth": 10,
+          "roleHint": "system"
+        },
+        "body": "The World 保存当前叙事分支的结构化世界事实，不是你自由补写世界观的数据库。先调用 official.the-world/read-world-state 读取当前世界和 revision，再判断本轮明确发生的变化。只更新叙事已经确认的地点、场景、时间、历法、天气或背景；未知事实保持未知，无时间流逝依据时不推进时间。详细世界规则以作者提供的其他 Lore 为准。\n目标分支和调用身份由宿主从当前 Narrative Turn 提供，不传 timelineId、branchId、target 或 idempotencyKey。不绑定 Narrative 的会话不能使用世界工具，不猜目标。更新必须携带读取所得 expectedRevisionId。revision 冲突时重新读取，再判断是否仍需更新，不强制覆盖；成功后不再次提交同一变化。未初始化或旧版 State 需要作者显式配置或升级，不自行重建覆盖。"
+      },
+      {
+        "id": "official.the-world.maintenance.components",
+        "label": "实体与局部修改",
+        "category": "lore",
+        "kind": "entry",
+        "enabled": true,
+        "capabilities": {
+          "activation": { "kind": "always" },
+          "targetAnchorId": "@lore.stable",
+          "localDepth": 20,
+          "roleHint": "system"
+        },
+        "body": "世界数据位于 State 的 theWorld.entities。实体 ID 就是集合中的键，实体只包含 components，不写 id、kind、schemaVersion、createdBy、时间戳等实体 metadata，也不创建 metadata 组件。组件模板版本由平台声明管理，组件数据不写 version。固定实体 world.components.world = {currentSceneId?:场景ID} 决定当前场景，再由 scene.placeId 指向当前地点，不能按实体顺序猜位置。当前时间只读 world.components.worldTime；天气和背景优先用当前 Scene 的组件，否则用 world 的默认组件，缺少则未知。已有实体不要因改名生成新 ID。\nplace.parentPlaceId 和 connections[].toPlaceId 必须引用现有地点，父地点不得循环。worldTime.value 保存 calendarId、year、month、day、hour、minute，必须存在同 ID 的 Calendar，month 按 months 数组从 1 计数，day 不得超过对应月份 days。不要使用系统时钟或强行套用 Gregorian。weather.kind 为 clear、rain、snow、storm、fog 或 custom。媒体保存稳定资源引用，不写任意 URL。\n更新只支持 /entities/ 子树内的 add、replace、remove，父对象必须存在；数组整体提交，不修改索引。可以同批创建实体并建立引用，最终结果必须完整有效。不删除实体，除非作者明确要求且同批修正所有内部引用。不替换整个世界根，不触碰其他扩展的数据。"
+      },
+      {
+        "id": "official.the-world.maintenance.example",
+        "label": "天气更新示例",
+        "category": "lore",
+        "kind": "entry",
+        "enabled": true,
+        "capabilities": {
+          "activation": { "kind": "always" },
+          "targetAnchorId": "@lore.stable",
+          "localDepth": 30,
+          "roleHint": "system"
+        },
+        "body": "示例：用 {} 调用读取工具，得到 revision R，并确认当前场景没有天气覆盖且 world 已有 weather。本轮叙事明确开始下雨时，更新参数为 {\"expectedRevisionId\":\"R\",\"patch\":[{\"op\":\"replace\",\"path\":\"/entities/world/components/weather\",\"value\":{\"kind\":\"rain\",\"label\":\"中雨\"}}]}。R 必须替换成读取结果，不能照抄。若天气不存在则使用 add；当前 Scene 有局部天气时，根据叙事更新该 Scene，而不是误改全世界。如果天气没有变化，不调用更新。成功才表示 State 已提交，后续生成失败不自动回滚这次写入。"
+      }
+    ]
+  }
+}

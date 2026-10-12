@@ -1,4 +1,4 @@
-import type { PlaceComponent, WorldBranchRef, WorldEntity, WorldEntityKind } from './contracts.js'
+import type { PlaceComponent, WorldEntity } from './contracts.js'
 
 export type MigrationDiagnostic = {
   severity: 'warning' | 'error'
@@ -20,11 +20,9 @@ export type ParsedWorldState = {
   diagnostics: MigrationDiagnostic[]
 }
 
-/** World entities are deliberately incomplete until an importer supplies branch and timestamps. */
-export type MigrationWorldEntity = Omit<WorldEntity, 'branch' | 'createdAt' | 'updatedAt'> & {
-  branch?: WorldBranchRef
-  createdAt?: string
-  updatedAt?: string
+/** Import diagnostics are not persisted as entity data. */
+export type MigrationWorldEntity = WorldEntity & {
+  id: string
   source: 'sillytavern'
   sourceAttributes?: Record<string, unknown>
 }
@@ -153,8 +151,7 @@ export function parseMapUpdate(text: string): ParsedMapUpdate {
 }
 
 function mapNodeToEntity(id: string, name: string | undefined, node: Record<string, unknown>, diagnostics: MigrationDiagnostic[], index: number): MigrationWorldEntity {
-  const kind = mapEntityKind(node.type)
-  const place: PlaceComponent | undefined = name ? { version: 1, name } : undefined
+  const place: PlaceComponent | undefined = name ? { name } : undefined
   if (place && typeof node.description === 'string' && node.description.trim()) place.description = node.description.trim()
   if (place && typeof node.parentId === 'string' && node.parentId.trim()) place.parentPlaceId = node.parentId.trim()
   if (typeof node.coords === 'string' && node.coords.trim()) {
@@ -170,18 +167,11 @@ function mapNodeToEntity(id: string, name: string | undefined, node: Record<stri
     diagnostics.push(diagnostic('warning', 'unresolved-resource-reference', `节点“${id}”的 illustration 仅保留字符串候选；不会自动访问 URL`, index, 'illustration'))
   }
   return {
-    schemaVersion: 1,
     id,
-    kind,
-    createdBy: 'migration',
     components: place ? { place } : {},
     source: 'sillytavern',
     ...(Object.keys(sourceAttributes).length > 0 ? { sourceAttributes } : {}),
   }
-}
-
-function mapEntityKind(type: unknown): WorldEntityKind {
-  return type === 'world' || type === 'continent' || type === 'region' ? 'world' : 'place'
 }
 
 function extractTag(text: string, tag: string, diagnostics: MigrationDiagnostic[]): string {

@@ -1,44 +1,60 @@
 # State / EC 数据合同
 
-当前合同版本为 `1`，由 `src/contracts.ts` 导出。它描述 The World 在 Loom State 中保存的最小结构化事实；State 的 revision、changeset 和 branch 仍由宿主维护。
+当前持久化使用平台原生 EC，不在 State 中重复保存管理 metadata。类型在 `src/contracts.ts`，可执行校验、变更和投影共用 `src/world-state.js`。组件模板版本由平台声明管理，RPC mutation 协议版本为 3，不写入 State。
 
-## 范围与归属
+## 归属与投影
 
-`WorldStateSnapshot` 必须绑定一个 `timelineId` 与 `branchId`。每个 `WorldEntity.branch` 必须与写入目标一致，读取或更新时不能把另一个分支的实体合并进来。`WorldEntity.id` 在同一分支内稳定且唯一；跨分支可以复用同一个 ID，但不会共享后续修订。
+`theWorld = {entities:{world:{components:{world:{}}}}}`。根只包含实体集合，实体只包含组件，不保存 id、kind、schemaVersion、createdBy、createdAt、updatedAt 或 branch，也不把它们搬进 metadata 组件。实体 ID 是集合键；投影结果可以额外返回 ID 供界面使用，但不持久化这个副本。Timeline / Branch 的权威身份只在宿主 State target 中；Fork 复制快照后不需要重写业务 JSON。
 
-实体只保存短描述和可查询事实。长篇世界观文本继续由 Setting / Prompt Resource 提供。`WorldEntity.components` 允许地点、场景、世界时间、日历和背景按需渐进补充。
+平台声明实体类型 `official-the-world-entity`，集合路径为 `theWorld.entities`，固定实体 `world` 至少包含 `components.world = {}`。可选 `currentSceneId` 指向具备 scene 组件的实体，`scene.placeId` 指向具备 place 组件的实体。不按实体顺序猜当前位置。
 
-## 实体与组件
+- 时间只来自固定 world 的 worldTime。
+- 天气和背景优先来自当前 Scene，缺省时使用 world 组件；都不存在则未知。
+- 日期、天气、地点和时间戳不自动生成；不使用系统时钟补剧情事实。
+- 不保存实体管理 metadata；资源 ID、历法 ID 和天气 kind 属于实际业务数据，不在本次删除范围内。
+- 完整初始化示例见 `resources/examples/world-ec.json`。Contribution 声明七种组件模板，只默认挂载空 world，不自动安装示例。
 
-- `WorldEntity`：稳定 ID、实体种类、分支归属、来源和组件集合。`createdBy` 区分作者初始化、叙事发现、迁移和系统写入。
-- `PlaceComponent`：名称、简述、父地点、连接、可选坐标、结构化事实和资源引用。连接只保存目标 ID，不复制目标地点正文。
-- `SceneComponent`：场景名称、简述、所在地点、参与者实体 ID、资源和可选背景。
-- `WorldTimeComponent`：不依赖系统时钟的历法日期时间；`calendarId` 指向同一分支中的 `CalendarComponent`。时区和暂停状态可选。
-- `CalendarComponent`：历法 ID、名称、月份、可选星期、起始星期和纪元。当前包提供日期格式化和月份网格计算；历法推进、换算、节日和回溯规则仍由后续 State 规则合同定义。
+## 组件与引用
 
-## 资源与背景
+Place 保存名称、描述、parentPlaceId、connections、坐标、短事实和资源。父地点、连接及场景地点必须存在；父地点不得成环。Scene 保存名称、描述、placeId、参与者引用与资源。参与者可指向外部身份，当前版本不把它们当成 The World 内部实体。
 
-`WorldResourceReference` 只保存宿主管理的稳定资源 ID、用途和可诊断的可用性，不保存磁盘路径或任意 URL。背景使用 `BackgroundReference`，其中的 `asset` 必须是角色为 `background` 的 Asset 引用；宿主通过 `context.backgrounds.register()` 将它解析为包含 `id`、`name`、`description`、`image` 和 `source` 的注册项。
+WorldTime 包含 calendarId、整数 year、从 1 开始的 month/day，以及 hour 0–23、minute/second 0–59、millisecond 0–999。Calendar ID 在世界内唯一；months 定义非空、有稳定 ID 的月份及正整数 days。日期按对应 Calendar 的实际月份长度校验，不套用 Gregorian；零点和第 0 年有效。历法缺失不降级为系统日历。
 
-资源失效或扩展卸载时保留引用，并将 `availability.status` 标为 `missing` 或 `revoked`，同时记录原因和观测时间；Renderer 应显示可诊断状态并跳过失效资源。宿主撤销背景注册后，State 中的引用不会伪装成仍可用，也不会静默改写成另一个资源。
+Weather kind 为 clear、rain、snow、storm、fog、custom；intensity 若提供须在 0–1。资源引用保存稳定 id、kind、role、availability。Background 必须引用 role=background 的 Asset。失效资源可以明确标记 missing/revoked 并提供 observedAt，但本包尚无宿主卸载后自动更新这些持久标记的监听链。
 
-## 更新、幂等与修订
+实体的业务用途由其组件表达；组件集合限定 world、place、scene、worldTime、calendar、background、weather，不保存组件内的 version。未挂载模板初始值为空对象，供作者配置，并不代表已有天气或历法；完整业务校验仍由共享校验器执行。JSON 值必须有限且可序列化。长篇世界观仍由作者的 Lore 提供。
 
-`WorldMutation` 是包内迁移和 RPC 的实体操作形状；AI 更新工具使用同一分支边界下的受限 JSON Patch：
+## 写入和工具
 
-1. `target` 明确写入的 Timeline / Branch；禁止依赖服务端全局“当前聊天”。
-2. `expectedRevisionId` 用于乐观并发检查。冲突时由宿主拒绝，调用方重新读取后再决定如何合并。
-3. `idempotencyKey` 对同一目标分支和同一操作请求保持稳定。重复提交必须重放原结果，不重复创建实体、组件或背景副作用。
-4. 操作仅表达实体/组件的 upsert、删除和替换；真正提交时由 State 生成 revision 与 changeset，旧 revision 保留供追踪。
+RPC `writeWorldState` 接收显式 timelineId / branchId 与 mutation。mutation 包含 schemaVersion=3、同一 target、expectedRevisionId、idempotencyKey 及实体或组件操作。upsert-entity 使用操作级 entityId，entity 内只有 components。禁止未知操作。
 
-服务端模块已通过公开 `context.state.read/write` 接入读写 RPC；迁移解析和 mutation 生成仍是显式调用，不写入世界书、不自动合并或回滚。
+AI 工具不接收目标与幂等键：
 
-## 动态天色
+```json
+{
+  "expectedRevisionId": "读取返回的 revision",
+  "patch": [
+    {"op":"add","path":"/entities/world/components/weather","value":{"kind":"rain"}}
+  ]
+}
+```
 
-`src/sky-gradient.ts` 提供纯函数 `skyPaletteAt(hour, minute)` 与 `skyCss(palette)`。宿主在收到新的 `WorldTimeComponent` 后可将结果写入全局背景层：背景图片作为底层，天色渐变作为低不透明度叠层，表面材质仍由宿主外观设置控制。
+`read-world-state` 参数为 `{}` 或 `{entityId:"..."}`。宿主从已授权的 Narrative Turn 提供只读 narrativeTarget 和 invocationId；未绑定则拒绝，模型传入 timelineId、branchId、target 或 idempotencyKey 也拒绝。返回仅包含 The World 子树，不泄露其他扩展的 State。
 
-扩展不会读取系统时钟或直接修改宿主 DOM。正式接入需要宿主提供外观更新 API，以保持 State、背景注册和全局视觉状态之间的边界清晰。
+JSON Patch 仅支持 `/entities/` 下的 add、replace、remove。父对象必须已存在；replace/remove 的路径必须存在；数组只整体替换，不支持索引。禁止原型键。整批操作结束后统一检查引用，允许同批创建实体并引用，删除被引用实体时必须同时修正引用。
 
-## 资源诊断
+执行器提交确定性的局部 State operations。幂等身份按包、目标分支和 invocationId 隔离，RPC 则使用显式键。宿主 State Service 判定相同 expectedRevisionId 与相同规范化操作的重放，返回原结果，不推进当前 head；同键不同操作拒绝。新的 stale 请求产生 head conflict，不覆盖并发更新。不自动回滚已成功的工具写入。
 
-`collectResourceDiagnostics()` 扫描地点、场景和背景组件中的资源引用，保留所属实体、资源角色、可用性和失效原因；它只生成诊断，不修改 State 或重新注册资源。
+## 旧数据显式升级
+
+启用、安装或重载不迁移既有 Timeline。v1/v2 的普通读取明确要求升级，缺根明确要求初始化。以下 RPC 是数据转换入口，不更新平台保存的贡献声明；旧安装声明与新 EC 声明不同，采用恢复仍需单独的跨声明迁移，当前未实现，不能以这些 RPC 绕过。
+
+1. 调用 `official.the-world.previewWorldUpgrade`，传 timelineId / branchId；旧 world 不叫 `world` 时显式提供 worldEntityId，需要当前场景时提供 currentSceneId。
+2. 预览只返回 target、revisionId、原生 EC state、options，不写数据。移除根/实体旧版本、身份副本、来源、时间戳、branch 及组件 version，固定 world 身份，保留已有当前场景指针；不猜时间、历法或当前场景。空旧根可得到空 world，身份冲突或无效引用拒绝。
+3. 审阅后调用 `official.the-world.commitWorldUpgrade`，携带相同目标、选择字段、预览 state、expectedRevisionId 和稳定 idempotencyKey。服务端重新计算预览并比对，随后交由 State Service 提交；版本冲突需重新预览。
+
+旧数据缺 Calendar 或已有坏引用时预览拒绝，必须由作者显式修正源数据，不能静默丢字段。升级 RPC 已提供，专用升级 UI 尚未实现。宿主历史 revision 保留，升级不是原地覆盖历史。
+
+## 表现边界
+
+面板与服务端用同一固定指针投影。当前面板仍是手动目标读取，不具备当前分支上下文及 State 自动订阅。原实验版全局天气仍属于独立预览；正式背景能力与 State 联动不作为已交付事实。

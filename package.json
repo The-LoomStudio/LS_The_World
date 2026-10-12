@@ -5,9 +5,10 @@
   "type": "module",
   "description": "The World 官方扩展：State / EC 数据合同与 client/server 入口骨架。",
   "scripts": {
+    "build": "node scripts/build-client.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "smoke": "tsx scripts/smoke.ts",
-    "validate-release": "tsx scripts/smoke.ts && node --check src/client/index.js && node --check src/server/index.js"
+    "validate-release": "pnpm run build && pnpm run smoke && node --check src/server/index.js"
   },
   "repository": {
     "type": "git",
@@ -15,5 +16,14 @@
   },
   "bugs": {
     "url": "https://github.com/The-LoomStudio/LS_The_World/issues"
+  },
+  "dependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.3",
+    "esbuild": "0.28.0"
   }
 }

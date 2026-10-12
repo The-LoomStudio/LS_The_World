@@ -1,10 +1,8 @@
 /** The World data contract. Runtime state is owned by Loom State, not this package. */
 
-export const THE_WORLD_SCHEMA_VERSION = 1 as const
+export const THE_WORLD_MUTATION_VERSION = 3 as const
 
-export type WorldSchemaVersion = typeof THE_WORLD_SCHEMA_VERSION
-
-export type WorldEntityKind = 'world' | 'place' | 'scene'
+export type WorldMutationVersion = typeof THE_WORLD_MUTATION_VERSION
 
 export type WorldBranchRef = {
   timelineId: string
@@ -12,14 +10,8 @@ export type WorldBranchRef = {
 }
 
 export type WorldEntity = {
-  schemaVersion: WorldSchemaVersion
-  id: string
-  kind: WorldEntityKind
-  branch: WorldBranchRef
-  createdBy: 'author' | 'narrative' | 'migration' | 'system'
-  createdAt: string
-  updatedAt: string
   components: {
+    world?: WorldComponent
     place?: PlaceComponent
     scene?: SceneComponent
     worldTime?: WorldTimeComponent
@@ -27,6 +19,10 @@ export type WorldEntity = {
     background?: BackgroundReference
     weather?: WeatherComponent
   }
+}
+
+export type WorldComponent = {
+  currentSceneId?: string
 }
 
 export type WorldResourceRole = 'image' | 'audio' | 'map' | 'background' | 'other'
@@ -67,7 +63,6 @@ export type PlacePosition = {
 }
 
 export type PlaceComponent = {
-  version: 1
   name: string
   description?: string
   parentPlaceId?: string
@@ -78,7 +73,6 @@ export type PlaceComponent = {
 }
 
 export type SceneComponent = {
-  version: 1
   name: string
   description?: string
   placeId?: string
@@ -98,14 +92,12 @@ export type WorldTimeValue = {
 }
 
 export type WorldTimeComponent = {
-  version: 1
   value: WorldTimeValue
   timeZone?: string
   paused?: boolean
 }
 
 export type WeatherComponent = {
-  version: 1
   kind: 'clear' | 'rain' | 'snow' | 'storm' | 'fog' | 'custom'
   label?: string
   intensity?: number
@@ -124,7 +116,6 @@ export type CalendarWeekday = {
 }
 
 export type CalendarComponent = {
-  version: 1
   id: string
   name: string
   months: CalendarMonth[]
@@ -134,19 +125,17 @@ export type CalendarComponent = {
 }
 
 export type WorldStateSnapshot = {
-  schemaVersion: WorldSchemaVersion
-  branch: WorldBranchRef
   entities: Record<string, WorldEntity>
 }
 
 export type WorldMutationOperation =
-  | { op: 'upsert-entity'; entity: WorldEntity }
+  | { op: 'upsert-entity'; entityId: string; entity: WorldEntity }
   | { op: 'set-component'; entityId: string; component: keyof WorldEntity['components']; value: WorldEntity['components'][keyof WorldEntity['components']] }
   | { op: 'remove-component'; entityId: string; component: keyof WorldEntity['components'] }
   | { op: 'remove-entity'; entityId: string }
 
 export type WorldMutation = {
-  schemaVersion: WorldSchemaVersion
+  schemaVersion: WorldMutationVersion
   target: WorldBranchRef
   expectedRevisionId: string
   idempotencyKey: string
@@ -158,7 +147,7 @@ export type WorldJsonPatchOperation =
   | { op: 'remove'; path: string }
 
 export type WorldJsonPatchMutation = {
-  schemaVersion: WorldSchemaVersion
+  schemaVersion: WorldMutationVersion
   target: WorldBranchRef
   expectedRevisionId: string
   idempotencyKey: string

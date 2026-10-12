@@ -6,7 +6,7 @@ const calendar = (id, days = 30) => ({
   components: { calendar: { id, name: id, months: [{ id: 'spring', name: '春月', days }] } },
 })
 const clock = (calendarId, day = 3) => ({
-  components: { worldTime: { version: 1, value: { calendarId, year: 42, month: 1, day, hour: 7, minute: 15 } } },
+  components: { worldTime: { value: { calendarId, year: 42, month: 1, day, hour: 7, minute: 15 } } },
 })
 
 test('按日历 ID 匹配，不把第一个历法混入其他世界时间', () => {

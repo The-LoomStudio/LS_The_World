@@ -20,9 +20,13 @@
 
 ## 核心定位：底层世界数据，而不是强制展示层
 
-The World 的权威数据来源应是 Loom State，必要时使用 State 的 Entity / Component（EC）表达稳定身份与可渐进补充的事实。作者初始化的地点、AI 在叙事中发现的地点，以及后续修订，都进入同一套 State 合同；The World 不再额外维护一份 localStorage 地图数据库，也不把世界书或 Setting 当作运行时权威。
+### 运行面板的动态 Header
 
-地点不要求一次性完整。一个地点可以先只有稳定 ID、名称和简短描述，之后再增加父级、连接、位置、已知事实、图片或音频引用。结构化、需要查询或频繁变化的内容进入 State；长篇文化、历史和氛围描述继续由 Setting / Prompt Resource 提供。Setting 的作者工作台和展示方式尚未冻结，因此不能把详细文本复制进 State 作为临时替代。
+ST 中的圆形或方形 The World 图标不是单纯的静态 Logo，而是天气、时段和面板入口的动态状态载体。Loom 迁移后分为两层：主应用 `stage.header.actions` 只提供固定的 The World 入口；运行面板内部由 The World 自己渲染动态 Header，显示圆形或方形 App 图标、天气图标、当前时段、状态颜色和 Tab 入口。运行面板使用 Host 管理的 `shell.focus-surface` 与 `shadow` 适配器，隔离扩展样式但保留 State / RPC 透传能力，不修改主应用 Header 的全局状态，也不把天气状态耦合到设置工作台。
+
+The World 的权威数据来源应是 Loom State，必要时使用 State 的 Entity / Component（EC）表达稳定身份与可渐进补充的事实。作者初始化的地点、AI 在叙事中发现的地点，以及后续修订，都进入同一套 State 合同；The World 不再额外维护一份 localStorage 地图数据库，也不把世界书或 Lore 当作运行时权威。
+
+地点不要求一次性完整。一个地点可以先只有稳定 ID、名称和简短描述，之后再增加父级、连接、位置、已知事实、图片或音频引用。结构化、需要查询或频繁变化的内容进入 State；长篇文化、历史和氛围描述继续由 Lore / Prompt Resource 提供。Lore 的作者工作台和展示方式尚未冻结，因此不能把详细文本复制进 State 作为临时替代。
 
 The World 自带的地图和日历应定位为**数据调试台**：帮助作者与开发者检查地点关系、当前世界时间、日历换算、缺失引用和最近变更。它不应强行成为玩家最终看到的地图或日历，也不应要求所有作者采用同一种渲染表。作者可以用自定义 Renderer 制作手机 App、导航界面、桌面日历或完全不同的叙事 UI；这些界面从 The World 的 State 读取数据。
 
@@ -57,7 +61,7 @@ State / EC（权威世界事实）
 
 角色卡内的地图、插画和音频应作为卡片 Asset 被宿主管理。The World 不直接读取磁盘路径或任意 URL；它通过稳定的资源身份／受控 Asset URL 读取作者已声明的资源，并把资源引用写入地点或场景 State。AI 操作资源时应选择作者可理解的资源 ID、名称或地点关联，不直接拼接路径。
 
-简单描述可随地点 State 一起读取，详细内容继续通过 Setting / Prompt Resource 注入。这样结构化查询不会依赖解析长文本，同时保留作者对世界观材料的自由度。提示词资源的作者 UI、来源展示和编辑体验仍由 Prompt Resource 相关计划决定，不在本扩展骨架中预先设计第二套编辑器。
+简单描述可随地点 State 一起读取，详细内容继续通过 Lore / Prompt Resource 注入。这样结构化查询不会依赖解析长文本，同时保留作者对世界观材料的自由度。提示词资源的作者 UI、来源展示和编辑体验仍由 Prompt Resource 相关计划决定，不在本扩展骨架中预先设计第二套编辑器。
 
 ## 收益与可能退步
 
@@ -108,7 +112,7 @@ The World 的背景引用由宿主外观状态统一持有。扩展只注册可�
 - WP2 纯数据层：已完成快照校验、分支一致性 mutation、revision 冲突、地点查询和世界时间分钟推进。
 - WP3 显式迁移解析：已完成 `<WorldState>` 与 `<MapUpdate>` 纯函数解析；解析器不访问世界书、localStorage 或 URL，目标分支由导入调用方显式提供。
 - WP3 调试与媒体模型：已完成地图/地点/日历/背景调试投影、Locator 文本投影，以及天气标准化和环境音切换判定；浏览器视觉效果与 Web Audio 执行层仍待接入。
-- WP4 客户端调试台：已完成 `official.the-world.debugger` 的官方 `shell.workspace-panel` Renderer 声明与最小可启用面板；当前显示模块和 workspace 状态，State 数据读取已接线，并显示 revision、实体数量、schema 与实体组件摘要。
+- WP4 客户端运行面板：已完成 `official.the-world.debugger` 的官方 `shell.focus-surface` Renderer 声明与最小可启用面板；Header 命令直接打开 Host 管理的独立运行层，不进入扩展设置工作台。当前显示模块和 workspace 状态，State 数据读取已接线，并显示 revision、实体数量、schema 与实体组件摘要。
 - WP4 Agent Tool：已声明并注册 `official.the-world/read-world-state`，读取工具要求显式 Timeline / Branch，可选实体 ID，不根据宿主全局“当前聊天”猜测上下文。
 - WP4 Agent Tool：`official.the-world/update-world-state` 已改为受限 JSON Patch；每次只允许修改 `/entities` 下的路径，写入前检查最新 Revision、目标分支和幂等键，场景不变时可只更新单个组件或字段。
 - WP5 显式导入：已完成 `createLegacyWorldImport()`，把 ST 的 WorldState / MapUpdate 解析结果提升为带目标分支、时间戳和 revision 前置条件的 Loom mutation；导入函数本身无持久化副作用。
@@ -130,7 +134,7 @@ The World 的背景引用由宿主外观状态统一持有。扩展只注册可�
 ### 已确认决策
 
 - 权威数据放在 Loom State / EC；不再以 localStorage 或世界书作为运行时真相。
-- 地点与场景保存稳定 ID、名称、简述、关系、当前位置和结构化资源引用；详细世界观文本继续由 Setting / Prompt Resource 提供。
+- 地点与场景保存稳定 ID、名称、简述、关系、当前位置和结构化资源引用；详细世界观文本继续由 Lore / Prompt Resource 提供。
 - 当前背景是 State Component 的一部分；背景资源通过 `context.backgrounds.register()` 注册，扩展卸载自动撤销。
 - The World 自带地图和日历只做调试台；作者可以读取 State 自行制作手机、HUD、卡片或 App 式界面。
 - 音频播放作为独立、可关闭的表现能力迁移，不与 Renderer 重渲染绑定。
