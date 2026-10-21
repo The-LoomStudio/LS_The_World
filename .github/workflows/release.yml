@@ -15,7 +15,8 @@ jobs:
       - name: Build extension archive
         run: |
           mkdir -p artifact/official.the-world
-          cp -R manifest.json package.json README.md LICENSE.md CHANGELOG.md update-manifest.json src resources assets docs artifact/official.the-world/
+          test -s dist/client.js
+          cp -R manifest.json package.json README.md LICENSE.md CHANGELOG.md update-manifest.json icon.png dist src resources assets docs artifact/official.the-world/
           tar -czf official.the-world-${GITHUB_REF_NAME}.tar.gz -C artifact official.the-world
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2

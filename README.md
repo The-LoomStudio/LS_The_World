@@ -69,3 +69,7 @@ pnpm typecheck
 pnpm smoke
 pnpm build
 ```
+
+## 宿主共享 React
+
+Client 构建将 React、React DOM 与官方 UI 标记为 external，由支持共享模块 import map 的 LoomStudio 宿主提供。安装后需刷新宿主页面加载新的 import map；旧版宿主不支持此构建。Shadow Renderer 的官方 UI 基础样式由宿主提供。
