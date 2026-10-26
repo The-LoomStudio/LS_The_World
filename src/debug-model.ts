@@ -7,7 +7,7 @@ export type WorldDebugProjection = {
   currentTime?: WorldTimeValue
   calendars: Array<{ id: string; name: string; monthCount: number }>
   backgrounds: Array<{ id: string; name: string; available: boolean }>
-  weather?: { kind: string; label?: string; intensity?: number }
+  weather?: NonNullable<ReturnType<typeof projectCurrentWorld>['weather']>
   resources: ReturnType<typeof summarizeResourceDiagnostics>
 }
 
@@ -20,7 +20,7 @@ export function projectWorldDebug(snapshot: WorldStateSnapshot): WorldDebugProje
   const weather = current.weather
   for (const [id, entity] of Object.entries(snapshot.entities)) {
     if (entity.components.place) places.push({ id, name: entity.components.place.name, ...(entity.components.place.parentPlaceId ? { parentPlaceId: entity.components.place.parentPlaceId } : {}), connectionCount: entity.components.place.connections?.length ?? 0 })
-    if (entity.components.calendar) calendars.push({ id: entity.components.calendar.id, name: entity.components.calendar.name, monthCount: entity.components.calendar.months.length })
+    if (entity.components.calendar?.id && entity.components.calendar.name && entity.components.calendar.months) calendars.push({ id: entity.components.calendar.id, name: entity.components.calendar.name, monthCount: entity.components.calendar.months.length })
     if (entity.components.background) backgrounds.push({ id: entity.components.background.id, name: entity.components.background.name, available: entity.components.background.availability.status === 'available' })
   }
   places.sort((a, b) => a.name.localeCompare(b.name))

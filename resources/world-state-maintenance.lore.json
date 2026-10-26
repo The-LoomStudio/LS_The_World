@@ -15,12 +15,14 @@
         "kind": "entry",
         "enabled": true,
         "capabilities": {
-          "activation": { "kind": "always" },
+          "activation": {
+            "kind": "always"
+          },
           "targetAnchorId": "@lore.stable",
           "localDepth": 10,
           "roleHint": "system"
         },
-        "body": "The World 保存当前叙事分支的结构化世界事实，不是你自由补写世界观的数据库。先调用 official.the-world/read-world-state 读取当前世界和 revision，再判断本轮明确发生的变化。只更新叙事已经确认的地点、场景、时间、历法、天气或背景；未知事实保持未知，无时间流逝依据时不推进时间。详细世界规则以作者提供的其他 Lore 为准。\n目标分支和调用身份由宿主从当前 Narrative Turn 提供，不传 timelineId、branchId、target 或 idempotencyKey。不绑定 Narrative 的会话不能使用世界工具，不猜目标。更新必须携带读取所得 expectedRevisionId。revision 冲突时重新读取，再判断是否仍需更新，不强制覆盖；成功后不再次提交同一变化。未初始化或旧版 State 需要作者显式配置或升级，不自行重建覆盖。"
+        "body": "The World 保存当前叙事分支的结构化世界事实，不是你自由补写世界观的数据库。先调用 official.the-world/read-world-state 读取当前世界和 revision，再判断本轮明确发生的变化。只更新叙事已经确认的地点、场景、时间、历法、天气或背景；未知事实保持未知，无时间流逝依据时不推进时间。详细世界规则以作者提供的其他 Lore 为准。\n目标分支和调用身份由宿主从当前 Narrative Turn 提供，不传 timelineId、branchId、target 或 idempotencyKey。不绑定 Narrative 的会话不能使用世界工具，不猜目标。更新必须携带读取所得 expectedRevisionId。revision 冲突时重新读取，再判断是否仍需更新，不强制覆盖；成功后不再次提交同一变化。新故事已建立空值结构：world、worldTime、calendar、weather 的未知字段为 null，null 不是零点、晴天或默认历法。收到用户第一次输入后，先读取状态，再按本轮输入、开场和已采用 Lore 中明确的事实填入已知值；没有依据的字段继续保持 null。优先用最小 patch 替换已有字段的 null，不用残缺对象替换整个组件。部分字段已知不要求一次填完，不为了消除 null 编造事实。不要重建或覆盖已有世界。缺少 theWorld 根或旧版 State 仍需通过平台显式采用、初始化或升级。"
       },
       {
         "id": "official.the-world.maintenance.components",
@@ -29,7 +31,9 @@
         "kind": "entry",
         "enabled": true,
         "capabilities": {
-          "activation": { "kind": "always" },
+          "activation": {
+            "kind": "always"
+          },
           "targetAnchorId": "@lore.stable",
           "localDepth": 20,
           "roleHint": "system"
@@ -43,7 +47,9 @@
         "kind": "entry",
         "enabled": true,
         "capabilities": {
-          "activation": { "kind": "always" },
+          "activation": {
+            "kind": "always"
+          },
           "targetAnchorId": "@lore.stable",
           "localDepth": 30,
           "roleHint": "system"

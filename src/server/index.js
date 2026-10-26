@@ -1,10 +1,10 @@
 import {
   applyJsonPatch, applyMutation, isRecord, mutationPatch, patchStateOperations,
-  projectCurrentWorld, requiredString, upgradeLegacyWorld, validateWorldRoot,
+  projectCurrentWorld, requiredString, upgradeLegacyWorld, validateWorldRoot, worldInitialComponents,
 } from '../world-state.js'
 
 const componentSchemas = {
-  world: { type: 'object', properties: { currentSceneId: { type: 'string', minLength: 1 } }, additionalProperties: false },
+  world: { type: 'object', properties: { currentSceneId: { type: ['string', 'null'], minLength: 1 } }, additionalProperties: false },
   place: { type: 'object', properties: {
     name: { type: 'string', minLength: 1 }, description: { type: 'string' }, parentPlaceId: { type: 'string', minLength: 1 },
     connections: { type: 'array' }, position: { type: 'object' }, facts: { type: 'object' }, resources: { type: 'array' },
@@ -14,15 +14,20 @@ const componentSchemas = {
     participantEntityIds: { type: 'array', items: { type: 'string' } }, resources: { type: 'array' },
   }, additionalProperties: false },
   worldTime: { type: 'object', properties: {
-    value: { type: 'object' }, timeZone: { type: 'string' }, paused: { type: 'boolean' },
+    value: { type: 'object', properties: {
+      calendarId: { type: ['string', 'null'], minLength: 1 }, year: { type: ['integer', 'null'] },
+      month: { type: ['integer', 'null'], minimum: 1 }, day: { type: ['integer', 'null'], minimum: 1 },
+      hour: { type: ['integer', 'null'], minimum: 0, maximum: 23 }, minute: { type: ['integer', 'null'], minimum: 0, maximum: 59 },
+      second: { type: 'integer', minimum: 0, maximum: 59 }, millisecond: { type: 'integer', minimum: 0, maximum: 999 },
+    }, required: ['calendarId', 'year', 'month', 'day', 'hour', 'minute'], additionalProperties: false }, timeZone: { type: 'string' }, paused: { type: 'boolean' },
   }, additionalProperties: false },
   calendar: { type: 'object', properties: {
-    id: { type: 'string' }, name: { type: 'string' }, months: { type: 'array' }, weekdays: { type: 'array' },
+    id: { type: ['string', 'null'] }, name: { type: ['string', 'null'] }, months: { type: ['array', 'null'] }, weekdays: { type: 'array' },
     weekStartsOn: { type: 'integer' }, eras: { type: 'array' },
   }, additionalProperties: false },
   weather: { type: 'object', properties: {
-    kind: { enum: ['clear', 'rain', 'snow', 'storm', 'fog', 'custom'] }, label: { type: 'string' },
-    intensity: { type: 'number', minimum: 0, maximum: 1 }, startedAt: { type: 'string' },
+    kind: { enum: [null, 'clear', 'rain', 'snow', 'storm', 'fog', 'custom'] }, label: { type: ['string', 'null'] },
+    intensity: { type: ['number', 'null'], minimum: 0, maximum: 1 }, startedAt: { type: 'string' },
   }, additionalProperties: false },
   background: { type: 'object', properties: {
     id: { type: 'string' }, asset: { type: 'object' }, name: { type: 'string' }, description: { type: 'string' },
@@ -36,13 +41,13 @@ export function activate(context) {
     entityTypes: [{ id: 'official-the-world-entity', collectionPath: 'theWorld.entities', label: 'The World 实体' }],
     templates: Object.entries(componentSchemas).map(([componentKey, schema]) => ({
       id: `official.the-world.${componentKey}`, templateVersion: 1, componentKey,
-      targetEntityTypeIds: ['official-the-world-entity'], schema, initial: {},
+      targetEntityTypeIds: ['official-the-world-entity'], schema, initial: structuredClone(worldInitialComponents[componentKey] ?? {}),
     })),
     entities: [{ typeId: 'official-the-world-entity', entityId: 'world' }],
-    componentMounts: [{
-      templateId: 'official.the-world.world', templateVersion: 1, componentKey: 'world',
+    componentMounts: Object.keys(worldInitialComponents).map(componentKey => ({
+      templateId: `official.the-world.${componentKey}`, templateVersion: 1, componentKey,
       target: { kind: 'entity', entity: { typeId: 'official-the-world-entity', entityId: 'world' } },
-    }],
+    })),
     bindings: [],
   })
 

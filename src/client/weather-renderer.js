@@ -5,7 +5,8 @@ export function createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds
   let lightningTimeout = 0
   let milkyWayTimeout = 0
   let windInterval = 0
-  let currentParticle = ''
+  let currentParticle
+  let windStrength = 0
   const timeouts = new Set()
 
   function schedule(callback, delay) {
@@ -42,10 +43,11 @@ export function createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds
   }
 
   function manageParticles(type, density) {
-    if (currentParticle === type && particleInterval) return
+    if (particleInterval && currentParticle.type === type && currentParticle.count === density.count
+      && currentParticle.speed === density.speed && currentParticle.wind === density.wind) return
     clearInterval(particleInterval)
     particleInterval = 0
-    currentParticle = type
+    currentParticle = { type, ...density }
     foregroundLayer.querySelectorAll('.particle-wrapper,.leaf').forEach(node => node.remove())
     if (!type) return
     const targetCount = Math.round(type === 'rain' ? 18 + density.count * 16 : 24 + density.count * 18)
@@ -89,6 +91,7 @@ export function createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds
   }
 
   function manageWind(active, strength) {
+    windStrength = strength
     if (!active) {
       clearInterval(windInterval)
       windInterval = 0
@@ -97,7 +100,7 @@ export function createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds
     }
     if (windInterval) return
     const pulse = () => {
-      const gust = Math.max(.35, strength) * (.55 + Math.random() * .9)
+      const gust = Math.max(.35, windStrength) * (.55 + Math.random() * .9)
       foregroundLayer.style.setProperty('--tw-gust-x', `${gust * 12}vw`)
       schedule(() => foregroundLayer.style.setProperty('--tw-gust-x', '0vw'), 900)
     }
@@ -125,7 +128,8 @@ export function createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds
     for (const id of timeouts) window.clearTimeout(id)
     timeouts.clear()
     particleInterval = lightningTimeout = milkyWayTimeout = windInterval = 0
-    currentParticle = ''
+    currentParticle = undefined
+    windStrength = 0
     backgroundLayer.replaceChildren()
     foregroundLayer.replaceChildren()
     foregroundLayer.classList.remove('lightning-flash')

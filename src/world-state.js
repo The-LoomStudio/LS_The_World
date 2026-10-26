@@ -2,12 +2,21 @@ const COMPONENTS = new Set(['world', 'place', 'scene', 'worldTime', 'calendar', 
 const WEATHER_KINDS = new Set(['clear', 'rain', 'snow', 'storm', 'fog', 'custom'])
 const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
+export const worldInitialComponents = {
+  world: { currentSceneId: null },
+  worldTime: { value: { calendarId: null, year: null, month: null, day: null, hour: null, minute: null } },
+  calendar: { id: null, name: null, months: null },
+  weather: { kind: null, label: null, intensity: null },
+}
+
 export function createWorldRoot() {
-  return {
-    entities: {
-      world: { components: { world: {} } },
-    },
-  }
+  return { entities: { world: { components: structuredClone(worldInitialComponents) } } }
+}
+
+/** @param {unknown} value @returns {value is import('./contracts.js').WorldTimeValue} */
+export function isKnownWorldTime(value) {
+  return isRecord(value) && nonEmpty(value.calendarId)
+    && ['year', 'month', 'day', 'hour', 'minute'].every(key => Number.isInteger(value[key]))
 }
 
 export function validateWorldRoot(root) {
@@ -28,33 +37,34 @@ export function validateWorldRoot(root) {
     if (!Object.hasOwn(root.entities, id) || !root.entities[id].components[component]) throw new Error(`The World ${component} reference is missing: ${id}`)
     return root.entities[id].components[component]
   }
-  if (world.components.world.currentSceneId !== undefined) requireComponent(world.components.world.currentSceneId, 'scene')
+  if (world.components.world.currentSceneId != null) requireComponent(world.components.world.currentSceneId, 'scene')
   const calendars = new Map()
   for (const [id, entity] of Object.entries(root.entities)) {
     const calendar = entity.components.calendar
-    if (calendar) {
+    if (calendar?.id != null) {
       if (calendars.has(calendar.id)) throw new Error(`The World calendar id is duplicated: ${calendar.id}`)
       calendars.set(calendar.id, calendar)
     }
     const place = entity.components.place
-    if (place?.parentPlaceId !== undefined) {
+    if (place?.parentPlaceId != null) {
       const ancestors = new Set([id])
       let parent = place.parentPlaceId
-      while (parent !== undefined) {
+      while (parent != null) {
         if (ancestors.has(parent)) throw new Error(`The World place hierarchy is cyclic: ${id}`)
         ancestors.add(parent)
         parent = requireComponent(parent, 'place').parentPlaceId
       }
     }
     for (const connection of place?.connections ?? []) requireComponent(connection.toPlaceId, 'place')
-    if (entity.components.scene?.placeId !== undefined) requireComponent(entity.components.scene.placeId, 'place')
+    if (entity.components.scene?.placeId != null) requireComponent(entity.components.scene.placeId, 'place')
   }
   for (const entity of Object.values(root.entities)) {
     const time = entity.components.worldTime?.value
-    if (!time) continue
+    if (!time || time.calendarId === null) continue
     const calendar = calendars.get(time.calendarId)
     if (!calendar) throw new Error(`The World calendar reference is missing: ${time.calendarId}`)
-    const month = calendar.months[time.month - 1]
+    if (time.month === null || time.day === null) continue
+    const month = calendar.months?.[time.month - 1]
     if (!month || time.day > month.days) throw new Error('The World date is outside its calendar')
   }
   return root
@@ -63,7 +73,7 @@ export function validateWorldRoot(root) {
 function validateComponent(component, value) {
   if (!isRecord(value) || Object.hasOwn(value, 'version')) throw new Error(`The World component is invalid: ${component}`)
   if (component === 'world') {
-    optionalString(value, 'currentSceneId')
+    optionalString(value, 'currentSceneId', false, true)
   } else if (component === 'place' || component === 'scene') {
     if (!nonEmpty(value.name)) throw new Error(`The World ${component} name is required`)
     optionalString(value, 'description', true)
@@ -88,25 +98,29 @@ function validateComponent(component, value) {
     }
   } else if (component === 'worldTime') {
     const time = value.value
-    if (!isRecord(time) || !nonEmpty(time.calendarId) || !Number.isInteger(time.year)
-      || !Number.isInteger(time.month) || time.month < 1 || !Number.isInteger(time.day) || time.day < 1
-      || !integerBetween(time.hour, 0, 23) || !integerBetween(time.minute, 0, 59)
+    if (!isRecord(time) || (time.calendarId !== null && !nonEmpty(time.calendarId))
+      || (time.year !== null && !Number.isInteger(time.year))
+      || (time.month !== null && (!Number.isInteger(time.month) || time.month < 1))
+      || (time.day !== null && (!Number.isInteger(time.day) || time.day < 1))
+      || (time.hour !== null && !integerBetween(time.hour, 0, 23))
+      || (time.minute !== null && !integerBetween(time.minute, 0, 59))
       || (time.second !== undefined && !integerBetween(time.second, 0, 59))
       || (time.millisecond !== undefined && !integerBetween(time.millisecond, 0, 999))) throw new Error('The World time component is invalid')
     optionalString(value, 'timeZone')
     if (value.paused !== undefined && typeof value.paused !== 'boolean') throw new Error('The World time paused flag is invalid')
   } else if (component === 'calendar') {
-    if (!nonEmpty(value.id) || !nonEmpty(value.name) || !Array.isArray(value.months) || !value.months.length
+    if ((value.id !== null && !nonEmpty(value.id)) || (value.name !== null && !nonEmpty(value.name))
+      || (value.months !== null && (!Array.isArray(value.months) || !value.months.length
       || value.months.some(month => !isRecord(month) || !nonEmpty(month.id) || !nonEmpty(month.name) || !Number.isInteger(month.days) || month.days < 1)
-      || new Set(value.months.map(month => month.id)).size !== value.months.length) throw new Error('The World calendar component is invalid')
+      || new Set(value.months.map(month => month.id)).size !== value.months.length))) throw new Error('The World calendar component is invalid')
     if (value.weekdays !== undefined && (!Array.isArray(value.weekdays) || !value.weekdays.length
       || value.weekdays.some(day => !isRecord(day) || !nonEmpty(day.id) || !nonEmpty(day.name))
       || new Set(value.weekdays.map(day => day.id)).size !== value.weekdays.length)) throw new Error('The World calendar weekdays are invalid')
     if (value.weekStartsOn !== undefined && (!value.weekdays || !integerBetween(value.weekStartsOn, 0, value.weekdays.length - 1))) throw new Error('The World week start is invalid')
     if (value.eras !== undefined && (!Array.isArray(value.eras) || value.eras.some(era => !isRecord(era) || !nonEmpty(era.id) || !nonEmpty(era.name) || !Number.isInteger(era.startsAtYear)))) throw new Error('The World calendar eras are invalid')
   } else if (component === 'weather') {
-    if (!WEATHER_KINDS.has(value.kind) || (value.intensity !== undefined && (!Number.isFinite(value.intensity) || value.intensity < 0 || value.intensity > 1))) throw new Error('The World weather component is invalid')
-    optionalString(value, 'label', true)
+    if ((value.kind !== null && !WEATHER_KINDS.has(value.kind)) || (value.intensity != null && (!Number.isFinite(value.intensity) || value.intensity < 0 || value.intensity > 1))) throw new Error('The World weather component is invalid')
+    optionalString(value, 'label', true, true)
     optionalString(value, 'startedAt')
   } else if (component === 'background') {
     if (!nonEmpty(value.id) || !nonEmpty(value.name) || typeof value.description !== 'string' || !nonEmpty(value.source)) throw new Error('The World background component is invalid')
@@ -191,14 +205,14 @@ export function projectCurrentWorld(snapshot) {
   validateWorldRoot(snapshot)
   const world = snapshot.entities.world
   const sceneId = world.components.world.currentSceneId
-  const scene = sceneId === undefined ? undefined : snapshot.entities[sceneId]
+  const scene = sceneId == null ? undefined : snapshot.entities[sceneId]
   const placeId = scene?.components.scene?.placeId
   return {
     world: { id: 'world', ...world },
     scene: scene === undefined ? undefined : { id: sceneId, ...scene },
-    place: placeId === undefined ? undefined : { id: placeId, ...snapshot.entities[placeId] },
-    time: world.components.worldTime,
-    weather: scene?.components.weather ?? world.components.weather,
+    place: placeId == null ? undefined : { id: placeId, ...snapshot.entities[placeId] },
+    time: isKnownWorldTime(world.components.worldTime?.value) ? world.components.worldTime : undefined,
+    weather: (scene?.components.weather ?? world.components.weather)?.kind == null ? undefined : scene?.components.weather ?? world.components.weather,
     background: scene?.components.background ?? world.components.background,
   }
 }
@@ -250,7 +264,8 @@ export function requiredString(value, field) {
   if (!nonEmpty(value)) throw new Error(`The World ${field} must be a non-empty string`)
   return value
 }
-function optionalString(value, field, allowEmpty = false) {
+function optionalString(value, field, allowEmpty = false, nullable = false) {
+  if (nullable && value[field] === null) return
   if (value[field] !== undefined && (typeof value[field] !== 'string' || (!allowEmpty && !nonEmpty(value[field])))) throw new Error(`The World ${field} is invalid`)
 }
 function integerBetween(value, min, max) { return Number.isInteger(value) && value >= min && value <= max }

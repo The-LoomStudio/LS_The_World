@@ -1,5 +1,5 @@
 import type { CalendarComponent, WorldEntity, WorldStateSnapshot, WorldTimeComponent } from './contracts.js'
-import { validateWorldRoot } from './world-state.js'
+import { isKnownWorldTime, validateWorldRoot } from './world-state.js'
 
 export {
   applyMutation as applyWorldMutation,
@@ -18,7 +18,8 @@ export function findPlaces(snapshot: WorldStateSnapshot, parentPlaceId?: string)
 
 export function advanceWorldTime(component: WorldTimeComponent, minutes: number, calendar: CalendarComponent): WorldTimeComponent {
   if (!Number.isInteger(minutes)) throw new Error('World time advance must use integer minutes')
-  if (calendar.id !== component.value.calendarId || !calendar.months.length) throw new Error('World time requires its Calendar')
+  if (!isKnownWorldTime(component.value)) throw new Error('World time has not been initialized')
+  if (calendar.id !== component.value.calendarId || !calendar.months?.length) throw new Error('World time requires its Calendar')
   const value = { ...component.value }
   const monthDays = calendar.months[value.month - 1]?.days
   if (!monthDays || value.day < 1 || value.day > monthDays) throw new Error('World date is outside its Calendar')

@@ -70,6 +70,6 @@ pnpm smoke
 pnpm build
 ```
 
-## 宿主共享 React
+### 2026-10-21 空值初始化
 
-Client 构建将 React、React DOM 与官方 UI 标记为 external，由支持共享模块 import map 的 LoomStudio 宿主提供。安装后需刷新宿主页面加载新的 import map；旧版宿主不支持此构建。Shadow Renderer 的官方 UI 基础样式由宿主提供。
+新故事采用 The World 后，会建立时间、历法、天气及当前场景指针的 null 字段结构。null 表示尚未知，不代表零点或晴天；首次用户输入后由 AI 沿用现有世界工具填入已知事实，未确定字段继续留空。已有时间线不自动改写；维护 Lore 请同步更新。State Schema 的必要类型声明支持标准 nullable type 数组，其余变量系统设计不在本次改动范围内。

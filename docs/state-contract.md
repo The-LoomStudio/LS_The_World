@@ -4,15 +4,15 @@
 
 ## 归属与投影
 
-`theWorld = {entities:{world:{components:{world:{}}}}}`。根只包含实体集合，实体只包含组件，不保存 id、kind、schemaVersion、createdBy、createdAt、updatedAt 或 branch，也不把它们搬进 metadata 组件。实体 ID 是集合键；投影结果可以额外返回 ID 供界面使用，但不持久化这个副本。Timeline / Branch 的权威身份只在宿主 State target 中；Fork 复制快照后不需要重写业务 JSON。
+新故事的固定 `world` 实体预挂载 `world`、`worldTime`、`calendar`、`weather` 四个组件。`currentSceneId`、历法 id/name/months、时间的 calendarId/year/month/day/hour/minute，以及天气 kind/label/intensity 均以 `null` 表示未知。根只包含实体集合，实体只包含组件，不保存 id、kind、schemaVersion、createdBy、createdAt、updatedAt 或 branch，也不把它们搬进 metadata 组件。实体 ID 是集合键；投影结果可以额外返回 ID 供界面使用，但不持久化这个副本。Timeline / Branch 的权威身份只在宿主 State target 中；Fork 复制快照后不需要重写业务 JSON。
 
-平台声明实体类型 `official-the-world-entity`，集合路径为 `theWorld.entities`，固定实体 `world` 至少包含 `components.world = {}`。可选 `currentSceneId` 指向具备 scene 组件的实体，`scene.placeId` 指向具备 place 组件的实体。不按实体顺序猜当前位置。
+平台声明实体类型 `official-the-world-entity`，集合路径为 `theWorld.entities`，固定实体 `world` 至少包含 `components.world`，旧故事仍可保留原先的空对象形式。可选 `currentSceneId` 指向具备 scene 组件的实体，`scene.placeId` 指向具备 place 组件的实体。不按实体顺序猜当前位置。
 
 - 时间只来自固定 world 的 worldTime。
 - 天气和背景优先来自当前 Scene，缺省时使用 world 组件；都不存在则未知。
 - 日期、天气、地点和时间戳不自动生成；不使用系统时钟补剧情事实。
 - 不保存实体管理 metadata；资源 ID、历法 ID 和天气 kind 属于实际业务数据，不在本次删除范围内。
-- 完整初始化示例见 `resources/examples/world-ec.json`。Contribution 声明七种组件模板，只默认挂载空 world，不自动安装示例。
+- 完整初始化示例见 `resources/examples/world-ec.json`。Contribution 声明七种组件模板，默认挂载上述四种空值组件，不自动安装示例，也不创建虚构地点或场景实体。
 
 ## 组件与引用
 
@@ -22,7 +22,7 @@ WorldTime 包含 calendarId、整数 year、从 1 开始的 month/day，以及 h
 
 Weather kind 为 clear、rain、snow、storm、fog、custom；intensity 若提供须在 0–1。资源引用保存稳定 id、kind、role、availability。Background 必须引用 role=background 的 Asset。失效资源可以明确标记 missing/revoked 并提供 observedAt，但本包尚无宿主卸载后自动更新这些持久标记的监听链。
 
-实体的业务用途由其组件表达；组件集合限定 world、place、scene、worldTime、calendar、background、weather，不保存组件内的 version。未挂载模板初始值为空对象，供作者配置，并不代表已有天气或历法；完整业务校验仍由共享校验器执行。JSON 值必须有限且可序列化。长篇世界观仍由作者的 Lore 提供。
+实体的业务用途由其组件表达；组件集合限定 world、place、scene、worldTime、calendar、background、weather，不保存组件内的 version。没有事实依据的字段保留 null，并不代表已有天气或历法；完整业务校验仍由共享校验器执行。JSON 值必须有限且可序列化。长篇世界观仍由作者的 Lore 提供。
 
 ## 写入和工具
 
@@ -57,4 +57,12 @@ JSON Patch 仅支持 `/entities/` 下的 add、replace、remove。父对象必�
 
 ## 表现边界
 
-面板与服务端用同一固定指针投影。当前面板仍是手动目标读取，不具备当前分支上下文及 State 自动订阅。原实验版全局天气仍属于独立预览；正式背景能力与 State 联动不作为已交付事实。
+面板与服务端用同一固定指针投影。客户端绑定宿主提供的当前 Timeline / Branch，通过 State 订阅更新面板和天气效果；地图显示合法地点层级中的全部地点，并保留选择和描述查看。暂停、切换目标或卸载时清理旧实例的效果与订阅，读取失败时撤下天气表现。当前天色使用实验性宿主 DOM 接口，正式 Background 资源的完整呈现合同尚未交付。
+
+## 空值与首次输入
+
+初始化只建立字段结构，不调用模型、不读取系统时间，也不预设晴天。用户第一次输入之后，AI 通过已有读取/更新工具，根据输入、开场及已采用 Lore 中确认的事实逐项填写。没有依据的字段不填；不要求一次消除所有 null。
+
+时间允许部分字段已知（例如 hour=0 而日期仍为 null）；只有时间必需字段完整时才投影为可用世界时间。未知天气不触发晴天效果，未知历法不出现在可用历法列表。非空值仍遵循原来的类型、范围、引用与自定义历法校验，更新与回滚使用原生 revision 合同。
+
+已有 Timeline 不因更新或重载被批量补值；新建 Timeline 或按平台当前声明显式初始化时使用新初值。维护 Lore 需通过资源更新流程采用新版内容。

@@ -122,8 +122,16 @@ function beginResize(event: React.PointerEvent<HTMLElement>, panel: HTMLElement 
   if (!panel) return
   event.preventDefault()
   event.stopPropagation()
-  const start = { x: event.clientX, y: event.clientY, width: panel.offsetWidth, height: panel.offsetHeight }
-  const move = (next: PointerEvent) => { const size = { width: Math.max(280, start.width + next.clientX - start.x), height: Math.max(320, start.height + next.clientY - start.y) }; setSize(size); saveLayout(position, size) }
+  const rect = panel.getBoundingClientRect()
+  const start = { x: event.clientX, y: event.clientY, width: rect.width, height: rect.height }
+  const move = (next: PointerEvent) => {
+    const maxWidth = Math.max(280, window.innerWidth - rect.left - 16)
+    const maxHeight = Math.max(200, window.innerHeight - rect.top - 16)
+    const size = { width: Math.min(maxWidth, Math.max(280, start.width + next.clientX - start.x)),
+      height: Math.min(maxHeight, Math.max(200, start.height + next.clientY - start.y)) }
+    setSize(size)
+    saveLayout(position, size)
+  }
   const end = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end) }
   window.addEventListener('pointermove', move)
   window.addEventListener('pointerup', end, { once: true })
@@ -164,10 +172,10 @@ function MapPane(props: { result?: PanelResult }) {
   const selectedPlace = entries.find(([id]) => id === selected)?.[1].components.place
   return entries.length ? <div className="tw-map">
     <div className="locations_container main_locations">{mains.map(([id, entity]) => <LocationCard key={id} id={id} place={entity.components.place} main selected={selected === id} onSelect={setSelected} />)}</div>
-    {mains.map(([mainId, mainEntity]) => {
-      const mainName = mainEntity.components.place.name || mainId
-      const nested = children.filter(([, child]) => child.components.place.parentPlaceId === mainId)
-      return nested.length ? <div className="locations_container sub_locations_container" data-main={mainName} key={`sub-${mainId}`}>{nested.map(([id, entity]) => <LocationCard key={id} id={id} place={entity.components.place} selected={selected === id} onSelect={setSelected} />)}</div> : null
+    {entries.map(([parentId, parentEntity]) => {
+      const parentName = parentEntity.components.place.name || parentId
+      const nested = children.filter(([, child]) => child.components.place.parentPlaceId === parentId)
+      return nested.length ? <div className="locations_container sub_locations_container" data-main={parentName} key={`sub-${parentId}`}>{nested.map(([id, entity]) => <LocationCard key={id} id={id} place={entity.components.place} selected={selected === id} onSelect={setSelected} />)}</div> : null
     })}
     {selectedPlace?.description ? <p>{selectedPlace.description}</p> : null}
   </div> : <p className="tw-notice">当前还没有地点数据。</p>

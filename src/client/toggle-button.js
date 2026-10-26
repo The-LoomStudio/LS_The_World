@@ -53,8 +53,8 @@ export function createToggleButtons(doc = document) {
       if (instances.has(host)) continue
       const root = host.shadowRoot ?? host.attachShadow({ mode: 'open' })
       const style = doc.createElement('style')
-      // Only positioning changes: the shell owns the Header placement and click.
-      style.textContent = `${baseCss}\n${effectsCss}\n:host{display:block;position:absolute;inset:0;width:40px;height:40px;overflow:hidden;pointer-events:none}#the_world-toggle-btn{position:absolute;inset:0;top:auto;right:auto;width:40px;height:40px;z-index:auto;cursor:inherit;box-sizing:border-box;border-radius:50%;overflow:hidden}`
+      // The shell owns the hit target; scale the original 40px scene to its size.
+      style.textContent = `${baseCss}\n${effectsCss}\n:host{display:block;position:absolute;inset:0;width:100%;height:100%;container-type:inline-size;overflow:hidden;pointer-events:none}#the_world-toggle-btn,#the_world-toggle-btn:hover{position:absolute;inset:auto;top:0;left:0;width:40px;height:40px;z-index:auto;cursor:inherit;box-sizing:border-box;border-radius:50%;overflow:hidden;transform-origin:top left;transform:scale(calc(100cqw / 40px))}`
       const button = doc.createElement('div')
       button.id = 'the_world-toggle-btn'
       const layers = [1, 2].map(n => {

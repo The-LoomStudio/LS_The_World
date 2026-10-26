@@ -22,7 +22,7 @@ export type WorldEntity = {
 }
 
 export type WorldComponent = {
-  currentSceneId?: string
+  currentSceneId?: string | null
 }
 
 export type WorldResourceRole = 'image' | 'audio' | 'map' | 'background' | 'other'
@@ -92,15 +92,15 @@ export type WorldTimeValue = {
 }
 
 export type WorldTimeComponent = {
-  value: WorldTimeValue
+  value: { [K in keyof WorldTimeValue]: K extends 'second' | 'millisecond' ? WorldTimeValue[K] : WorldTimeValue[K] | null }
   timeZone?: string
   paused?: boolean
 }
 
 export type WeatherComponent = {
-  kind: 'clear' | 'rain' | 'snow' | 'storm' | 'fog' | 'custom'
-  label?: string
-  intensity?: number
+  kind: 'clear' | 'rain' | 'snow' | 'storm' | 'fog' | 'custom' | null
+  label?: string | null
+  intensity?: number | null
   startedAt?: string
 }
 
@@ -116,9 +116,9 @@ export type CalendarWeekday = {
 }
 
 export type CalendarComponent = {
-  id: string
-  name: string
-  months: CalendarMonth[]
+  id: string | null
+  name: string | null
+  months: CalendarMonth[] | null
   weekdays?: CalendarWeekday[]
   weekStartsOn?: number
   eras?: Array<{ id: string; name: string; startsAtYear: number }>

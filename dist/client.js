@@ -216,7 +216,8 @@ function createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds }) {
   let lightningTimeout = 0;
   let milkyWayTimeout = 0;
   let windInterval = 0;
-  let currentParticle = "";
+  let currentParticle;
+  let windStrength = 0;
   const timeouts = /* @__PURE__ */ new Set();
   function schedule(callback, delay) {
     const id = window.setTimeout(() => {
@@ -251,10 +252,10 @@ function createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds }) {
     manageLightning(enabled && flags.storm);
   }
   function manageParticles(type, density) {
-    if (currentParticle === type && particleInterval) return;
+    if (particleInterval && currentParticle.type === type && currentParticle.count === density.count && currentParticle.speed === density.speed && currentParticle.wind === density.wind) return;
     clearInterval(particleInterval);
     particleInterval = 0;
-    currentParticle = type;
+    currentParticle = { type, ...density };
     foregroundLayer.querySelectorAll(".particle-wrapper,.leaf").forEach((node) => node.remove());
     if (!type) return;
     const targetCount = Math.round(type === "rain" ? 18 + density.count * 16 : 24 + density.count * 18);
@@ -295,6 +296,7 @@ function createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds }) {
     }, 15e3);
   }
   function manageWind(active, strength) {
+    windStrength = strength;
     if (!active) {
       clearInterval(windInterval);
       windInterval = 0;
@@ -303,7 +305,7 @@ function createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds }) {
     }
     if (windInterval) return;
     const pulse = () => {
-      const gust = Math.max(0.35, strength) * (0.55 + Math.random() * 0.9);
+      const gust = Math.max(0.35, windStrength) * (0.55 + Math.random() * 0.9);
       foregroundLayer.style.setProperty("--tw-gust-x", `${gust * 12}vw`);
       schedule(() => foregroundLayer.style.setProperty("--tw-gust-x", "0vw"), 900);
     };
@@ -329,7 +331,8 @@ function createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds }) {
     for (const id of timeouts) window.clearTimeout(id);
     timeouts.clear();
     particleInterval = lightningTimeout = milkyWayTimeout = windInterval = 0;
-    currentParticle = "";
+    currentParticle = void 0;
+    windStrength = 0;
     backgroundLayer.replaceChildren();
     foregroundLayer.replaceChildren();
     foregroundLayer.classList.remove("lightning-flash");
@@ -489,6 +492,9 @@ import { createRoot } from "react-dom/client";
 var COMPONENTS = /* @__PURE__ */ new Set(["world", "place", "scene", "worldTime", "calendar", "background", "weather"]);
 var WEATHER_KINDS = /* @__PURE__ */ new Set(["clear", "rain", "snow", "storm", "fog", "custom"]);
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
+function isKnownWorldTime(value) {
+  return isRecord(value) && nonEmpty(value.calendarId) && ["year", "month", "day", "hour", "minute"].every((key) => Number.isInteger(value[key]));
+}
 function validateWorldRoot(root) {
   if (isRecord(root) && Object.hasOwn(root, "schemaVersion")) throw new Error("The World legacy State requires preview and explicit upgrade before use");
   if (!isRecord(root) || !isRecord(root.entities) || Object.keys(root).some((key) => key !== "entities") || !isJsonValue(root)) throw new Error("The World State root is invalid");
@@ -506,33 +512,34 @@ function validateWorldRoot(root) {
     if (!Object.hasOwn(root.entities, id) || !root.entities[id].components[component]) throw new Error(`The World ${component} reference is missing: ${id}`);
     return root.entities[id].components[component];
   };
-  if (world.components.world.currentSceneId !== void 0) requireComponent(world.components.world.currentSceneId, "scene");
+  if (world.components.world.currentSceneId != null) requireComponent(world.components.world.currentSceneId, "scene");
   const calendars = /* @__PURE__ */ new Map();
   for (const [id, entity] of Object.entries(root.entities)) {
     const calendar = entity.components.calendar;
-    if (calendar) {
+    if (calendar?.id != null) {
       if (calendars.has(calendar.id)) throw new Error(`The World calendar id is duplicated: ${calendar.id}`);
       calendars.set(calendar.id, calendar);
     }
     const place = entity.components.place;
-    if (place?.parentPlaceId !== void 0) {
+    if (place?.parentPlaceId != null) {
       const ancestors = /* @__PURE__ */ new Set([id]);
       let parent = place.parentPlaceId;
-      while (parent !== void 0) {
+      while (parent != null) {
         if (ancestors.has(parent)) throw new Error(`The World place hierarchy is cyclic: ${id}`);
         ancestors.add(parent);
         parent = requireComponent(parent, "place").parentPlaceId;
       }
     }
     for (const connection of place?.connections ?? []) requireComponent(connection.toPlaceId, "place");
-    if (entity.components.scene?.placeId !== void 0) requireComponent(entity.components.scene.placeId, "place");
+    if (entity.components.scene?.placeId != null) requireComponent(entity.components.scene.placeId, "place");
   }
   for (const entity of Object.values(root.entities)) {
     const time = entity.components.worldTime?.value;
-    if (!time) continue;
+    if (!time || time.calendarId === null) continue;
     const calendar = calendars.get(time.calendarId);
     if (!calendar) throw new Error(`The World calendar reference is missing: ${time.calendarId}`);
-    const month = calendar.months[time.month - 1];
+    if (time.month === null || time.day === null) continue;
+    const month = calendar.months?.[time.month - 1];
     if (!month || time.day > month.days) throw new Error("The World date is outside its calendar");
   }
   return root;
@@ -540,7 +547,7 @@ function validateWorldRoot(root) {
 function validateComponent(component, value) {
   if (!isRecord(value) || Object.hasOwn(value, "version")) throw new Error(`The World component is invalid: ${component}`);
   if (component === "world") {
-    optionalString(value, "currentSceneId");
+    optionalString(value, "currentSceneId", false, true);
   } else if (component === "place" || component === "scene") {
     if (!nonEmpty(value.name)) throw new Error(`The World ${component} name is required`);
     optionalString(value, "description", true);
@@ -561,17 +568,17 @@ function validateComponent(component, value) {
     }
   } else if (component === "worldTime") {
     const time = value.value;
-    if (!isRecord(time) || !nonEmpty(time.calendarId) || !Number.isInteger(time.year) || !Number.isInteger(time.month) || time.month < 1 || !Number.isInteger(time.day) || time.day < 1 || !integerBetween(time.hour, 0, 23) || !integerBetween(time.minute, 0, 59) || time.second !== void 0 && !integerBetween(time.second, 0, 59) || time.millisecond !== void 0 && !integerBetween(time.millisecond, 0, 999)) throw new Error("The World time component is invalid");
+    if (!isRecord(time) || time.calendarId !== null && !nonEmpty(time.calendarId) || time.year !== null && !Number.isInteger(time.year) || time.month !== null && (!Number.isInteger(time.month) || time.month < 1) || time.day !== null && (!Number.isInteger(time.day) || time.day < 1) || time.hour !== null && !integerBetween(time.hour, 0, 23) || time.minute !== null && !integerBetween(time.minute, 0, 59) || time.second !== void 0 && !integerBetween(time.second, 0, 59) || time.millisecond !== void 0 && !integerBetween(time.millisecond, 0, 999)) throw new Error("The World time component is invalid");
     optionalString(value, "timeZone");
     if (value.paused !== void 0 && typeof value.paused !== "boolean") throw new Error("The World time paused flag is invalid");
   } else if (component === "calendar") {
-    if (!nonEmpty(value.id) || !nonEmpty(value.name) || !Array.isArray(value.months) || !value.months.length || value.months.some((month) => !isRecord(month) || !nonEmpty(month.id) || !nonEmpty(month.name) || !Number.isInteger(month.days) || month.days < 1) || new Set(value.months.map((month) => month.id)).size !== value.months.length) throw new Error("The World calendar component is invalid");
+    if (value.id !== null && !nonEmpty(value.id) || value.name !== null && !nonEmpty(value.name) || value.months !== null && (!Array.isArray(value.months) || !value.months.length || value.months.some((month) => !isRecord(month) || !nonEmpty(month.id) || !nonEmpty(month.name) || !Number.isInteger(month.days) || month.days < 1) || new Set(value.months.map((month) => month.id)).size !== value.months.length)) throw new Error("The World calendar component is invalid");
     if (value.weekdays !== void 0 && (!Array.isArray(value.weekdays) || !value.weekdays.length || value.weekdays.some((day) => !isRecord(day) || !nonEmpty(day.id) || !nonEmpty(day.name)) || new Set(value.weekdays.map((day) => day.id)).size !== value.weekdays.length)) throw new Error("The World calendar weekdays are invalid");
     if (value.weekStartsOn !== void 0 && (!value.weekdays || !integerBetween(value.weekStartsOn, 0, value.weekdays.length - 1))) throw new Error("The World week start is invalid");
     if (value.eras !== void 0 && (!Array.isArray(value.eras) || value.eras.some((era) => !isRecord(era) || !nonEmpty(era.id) || !nonEmpty(era.name) || !Number.isInteger(era.startsAtYear)))) throw new Error("The World calendar eras are invalid");
   } else if (component === "weather") {
-    if (!WEATHER_KINDS.has(value.kind) || value.intensity !== void 0 && (!Number.isFinite(value.intensity) || value.intensity < 0 || value.intensity > 1)) throw new Error("The World weather component is invalid");
-    optionalString(value, "label", true);
+    if (value.kind !== null && !WEATHER_KINDS.has(value.kind) || value.intensity != null && (!Number.isFinite(value.intensity) || value.intensity < 0 || value.intensity > 1)) throw new Error("The World weather component is invalid");
+    optionalString(value, "label", true, true);
     optionalString(value, "startedAt");
   } else if (component === "background") {
     if (!nonEmpty(value.id) || !nonEmpty(value.name) || typeof value.description !== "string" || !nonEmpty(value.source)) throw new Error("The World background component is invalid");
@@ -594,14 +601,14 @@ function projectCurrentWorld(snapshot) {
   validateWorldRoot(snapshot);
   const world = snapshot.entities.world;
   const sceneId = world.components.world.currentSceneId;
-  const scene = sceneId === void 0 ? void 0 : snapshot.entities[sceneId];
+  const scene = sceneId == null ? void 0 : snapshot.entities[sceneId];
   const placeId = scene?.components.scene?.placeId;
   return {
     world: { id: "world", ...world },
     scene: scene === void 0 ? void 0 : { id: sceneId, ...scene },
-    place: placeId === void 0 ? void 0 : { id: placeId, ...snapshot.entities[placeId] },
-    time: world.components.worldTime,
-    weather: scene?.components.weather ?? world.components.weather,
+    place: placeId == null ? void 0 : { id: placeId, ...snapshot.entities[placeId] },
+    time: isKnownWorldTime(world.components.worldTime?.value) ? world.components.worldTime : void 0,
+    weather: (scene?.components.weather ?? world.components.weather)?.kind == null ? void 0 : scene?.components.weather ?? world.components.weather,
     background: scene?.components.background ?? world.components.background
   };
 }
@@ -611,7 +618,8 @@ function isRecord(value) {
 function nonEmpty(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
-function optionalString(value, field, allowEmpty = false) {
+function optionalString(value, field, allowEmpty = false, nullable = false) {
+  if (nullable && value[field] === null) return;
   if (value[field] !== void 0 && (typeof value[field] !== "string" || !allowEmpty && !nonEmpty(value[field]))) throw new Error(`The World ${field} is invalid`);
 }
 function integerBetween(value, min, max) {
@@ -817,9 +825,15 @@ function beginResize(event, panel, position, setSize, saveLayout) {
   if (!panel) return;
   event.preventDefault();
   event.stopPropagation();
-  const start = { x: event.clientX, y: event.clientY, width: panel.offsetWidth, height: panel.offsetHeight };
+  const rect = panel.getBoundingClientRect();
+  const start = { x: event.clientX, y: event.clientY, width: rect.width, height: rect.height };
   const move = (next) => {
-    const size = { width: Math.max(280, start.width + next.clientX - start.x), height: Math.max(320, start.height + next.clientY - start.y) };
+    const maxWidth = Math.max(280, window.innerWidth - rect.left - 16);
+    const maxHeight = Math.max(200, window.innerHeight - rect.top - 16);
+    const size = {
+      width: Math.min(maxWidth, Math.max(280, start.width + next.clientX - start.x)),
+      height: Math.min(maxHeight, Math.max(200, start.height + next.clientY - start.y))
+    };
     setSize(size);
     saveLayout(position, size);
   };
@@ -890,10 +904,10 @@ function MapPane(props) {
   const selectedPlace = entries.find(([id]) => id === selected)?.[1].components.place;
   return entries.length ? /* @__PURE__ */ jsxs("div", { className: "tw-map", children: [
     /* @__PURE__ */ jsx("div", { className: "locations_container main_locations", children: mains.map(([id, entity]) => /* @__PURE__ */ jsx(LocationCard, { id, place: entity.components.place, main: true, selected: selected === id, onSelect: setSelected }, id)) }),
-    mains.map(([mainId, mainEntity]) => {
-      const mainName = mainEntity.components.place.name || mainId;
-      const nested = children.filter(([, child]) => child.components.place.parentPlaceId === mainId);
-      return nested.length ? /* @__PURE__ */ jsx("div", { className: "locations_container sub_locations_container", "data-main": mainName, children: nested.map(([id, entity]) => /* @__PURE__ */ jsx(LocationCard, { id, place: entity.components.place, selected: selected === id, onSelect: setSelected }, id)) }, `sub-${mainId}`) : null;
+    entries.map(([parentId, parentEntity]) => {
+      const parentName = parentEntity.components.place.name || parentId;
+      const nested = children.filter(([, child]) => child.components.place.parentPlaceId === parentId);
+      return nested.length ? /* @__PURE__ */ jsx("div", { className: "locations_container sub_locations_container", "data-main": parentName, children: nested.map(([id, entity]) => /* @__PURE__ */ jsx(LocationCard, { id, place: entity.components.place, selected: selected === id, onSelect: setSelected }, id)) }, `sub-${parentId}`) : null;
     }),
     selectedPlace?.description ? /* @__PURE__ */ jsx("p", { children: selectedPlace.description }) : null
   ] }) : /* @__PURE__ */ jsx("p", { className: "tw-notice", children: "\u5F53\u524D\u8FD8\u6CA1\u6709\u5730\u70B9\u6570\u636E\u3002" });
@@ -989,7 +1003,7 @@ function createToggleButtons(doc = document) {
       const style = doc.createElement("style");
       style.textContent = `${toggle_button_base_default}
 ${toggle_button_effects_default}
-:host{display:block;position:absolute;inset:0;width:40px;height:40px;overflow:hidden;pointer-events:none}#the_world-toggle-btn{position:absolute;inset:0;top:auto;right:auto;width:40px;height:40px;z-index:auto;cursor:inherit;box-sizing:border-box;border-radius:50%;overflow:hidden}`;
+:host{display:block;position:absolute;inset:0;width:100%;height:100%;container-type:inline-size;overflow:hidden;pointer-events:none}#the_world-toggle-btn,#the_world-toggle-btn:hover{position:absolute;inset:auto;top:0;left:0;width:40px;height:40px;z-index:auto;cursor:inherit;box-sizing:border-box;border-radius:50%;overflow:hidden;transform-origin:top left;transform:scale(calc(100cqw / 40px))}`;
       const button = doc.createElement("div");
       button.id = "the_world-toggle-btn";
       const layers = [1, 2].map((n) => {
