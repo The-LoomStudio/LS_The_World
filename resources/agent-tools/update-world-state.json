@@ -6,25 +6,50 @@
     "schema": {
       "type": "object",
       "properties": {
-        "expectedRevisionId": { "type": "string" },
+        "expectedRevisionId": {
+          "type": "string"
+        },
         "patch": {
           "type": "array",
           "description": "仅 add / replace / remove，路径在 /entities 下。父对象必须存在，数组整体替换；最终状态的引用和自定义历法日期必须有效。",
           "items": {
             "type": "object",
             "properties": {
-              "op": { "type": "string", "enum": ["add", "replace", "remove"] },
-              "path": { "type": "string" },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "add",
+                  "replace",
+                  "remove"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
               "value": {}
             },
-            "required": ["op", "path"],
+            "required": [
+              "op",
+              "path"
+            ],
             "additionalProperties": false
           }
         }
       },
-      "required": ["expectedRevisionId", "patch"],
+      "required": [
+        "expectedRevisionId",
+        "patch"
+      ],
       "additionalProperties": false
     }
   },
-  "prompt": { "guidance": "只更新 The World 自己的实体；revision 冲突时重新读取状态，不要覆盖其他模块数据。" }
+  "prompt": {
+    "guidance": "只更新 The World 自己的实体；revision 冲突时重新读取状态，不要覆盖其他模块数据。",
+    "loreRefs": [
+      {
+        "resourceId": "world-state-maintenance",
+        "nodeId": "official.the-world.maintenance"
+      }
+    ]
+  }
 }
