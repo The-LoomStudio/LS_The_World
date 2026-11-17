@@ -1,4 +1,4 @@
-let gradients = [
+const defaultGradients = [
   { hour: 0, colors: ['#00000c', '#00000c'], brightness: 'dark' },
   { hour: 4, colors: ['#20202c', '#515175'], brightness: 'dark' },
   { hour: 6, colors: ['#4a4969', '#cd82a0'], brightness: 'dark' },
@@ -11,7 +11,13 @@ let gradients = [
   { hour: 19, colors: ['#00000c', '#150800'], brightness: 'dark' },
   { hour: 24, colors: ['#00000c', '#00000c'], brightness: 'dark' },
 ]
+let gradients = defaultGradients.map(point => ({ ...point, colors: [...point.colors] }))
 let periodOverrides = {}
+
+export function resetSkyTheme() {
+  gradients = defaultGradients.map(point => ({ ...point, colors: [...point.colors] }))
+  periodOverrides = {}
+}
 
 export function setSkyTheme(theme) {
   if (!Array.isArray(theme?.gradients) || theme.gradients.length === 0) return false

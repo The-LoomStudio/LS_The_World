@@ -7,6 +7,14 @@
   "icon": "./icon.png",
   "description": "Loom Studio 官方世界状态扩展：地点、场景、时间、日历、背景与天气的 State / EC 数据层。",
   "author": "Loom Studio",
+  "repository": "https://github.com/The-LoomStudio/LS_The_World",
+  "distribution": {
+    "kind": "git",
+    "url": "https://github.com/The-LoomStudio/LS_The_World.git"
+  },
+  "update": {
+    "manifestUrl": "https://raw.githubusercontent.com/The-LoomStudio/LS_The_World/main/update-manifest.json"
+  },
   "engines": {
     "studio": "^0.1.0"
   },
@@ -29,6 +37,14 @@
           }
         ],
         "renderers": [
+          {
+            "id": "official.the-world.background",
+            "name": "The World 天空与天气背景",
+            "surface": "shell.background",
+            "instanceScope": "workspace",
+            "adapter": "shadow",
+            "fallback": "hidden"
+          },
           {
             "id": "official.the-world.debugger",
             "name": "The World 调试台",

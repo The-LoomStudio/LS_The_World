@@ -1,5 +1,5 @@
 // src/client/sky-gradient.js
-var gradients = [
+var defaultGradients = [
   { hour: 0, colors: ["#00000c", "#00000c"], brightness: "dark" },
   { hour: 4, colors: ["#20202c", "#515175"], brightness: "dark" },
   { hour: 6, colors: ["#4a4969", "#cd82a0"], brightness: "dark" },
@@ -12,7 +12,12 @@ var gradients = [
   { hour: 19, colors: ["#00000c", "#150800"], brightness: "dark" },
   { hour: 24, colors: ["#00000c", "#00000c"], brightness: "dark" }
 ];
+var gradients = defaultGradients.map((point) => ({ ...point, colors: [...point.colors] }));
 var periodOverrides = {};
+function resetSkyTheme() {
+  gradients = defaultGradients.map((point) => ({ ...point, colors: [...point.colors] }));
+  periodOverrides = {};
+}
 function setSkyTheme(theme) {
   if (!Array.isArray(theme?.gradients) || theme.gradients.length === 0) return false;
   gradients = theme.gradients.map((point) => ({ hour: Number(point.hour), colors: point.colors?.slice(0, 2), brightness: point.brightness })).filter((point) => Number.isFinite(point.hour) && point.colors?.length === 2 && point.colors.every(Boolean)).sort((a, b) => a.hour - b.hour);
@@ -128,7 +133,8 @@ function createClouds3dFX(target, cloudUrl) {
   let viewport = null, world = null, bases = [], layers = [], raf = 0, elapsed = 0, last = 0, density = { count: 1, wind: 1 };
   const css2 = document.createElement("style");
   css2.textContent = `#clouds-viewport{position:absolute;inset:0;overflow:hidden;perspective:1000px;z-index:0;pointer-events:none;transform:translateZ(0);backface-visibility:hidden}#clouds-world{position:absolute;left:50%;top:50%;width:512px;height:512px;margin:-256px;transform-style:preserve-3d}#clouds-world div{transform-style:preserve-3d}.cloudBase{position:absolute;left:256px;top:256px;width:20px;height:20px;margin:-10px;transform-style:preserve-3d}.cloudLayer{position:absolute;left:50%;top:50%;width:256px;height:256px;margin:-128px;background:url('${cloudUrl}') center/contain no-repeat;backface-visibility:hidden;transform-style:flat;will-change:transform,filter;transition:filter 7s ease-in-out}`;
-  document.head.append(css2);
+  const styleRoot = target.getRootNode() instanceof ShadowRoot ? target.getRootNode() : document.head;
+  styleRoot.append(css2);
   function frame(now) {
     if (!viewport) return;
     const dt = last ? Math.min((now - last) / 1e3, 0.05) : 0.016;
@@ -659,22 +665,23 @@ function describeWorldWeather(root) {
 // src/client/panel-view.tsx
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 var css = `
-:host{display:block;position:relative;min-height:100%;font:14px/1.45 system-ui,sans-serif;color:#e8ecff;pointer-events:none}*{box-sizing:border-box}.tw-panel{pointer-events:auto;position:absolute;top:60px;right:20px;width:min(450px,calc(100% - 40px));height:60vh;min-width:280px;min-height:200px;display:flex;flex-direction:column;overflow:hidden;border:1px solid #ffffff3d;border-radius:12px;background:color-mix(in srgb,var(--tw-panel-sky) 38%,transparent);box-shadow:0 5px 25px #0008;backdrop-filter:blur(18px) saturate(130%);transition:box-shadow .2s ease}.tw-panel.no-glass{backdrop-filter:none;background:color-mix(in srgb,var(--tw-panel-sky) 70%,transparent)}.tw-panel::before{content:"";position:absolute;inset:0;background:var(--tw-panel-sky);opacity:.08;pointer-events:none}.tw-head,.tw-tabs,.tw-content{position:relative;z-index:1}.tw-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 15px;background:color-mix(in srgb,var(--tw-panel-sky) 24%,transparent);border-bottom:1px solid #ffffff33;cursor:move;user-select:none;flex-shrink:0}.tw-brand{display:flex;align-items:center;gap:10px;min-width:0}.tw-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:11px;background:color-mix(in srgb,var(--tw-panel-sky) 46%,#000);transition:.3s;overflow:hidden}.tw-icon.weather-clear{background:linear-gradient(160deg,#f6c453,#c8792c)}.tw-icon.weather-cloudy{background:linear-gradient(160deg,#7f8c8d,#344052)}.tw-icon.weather-rain{background:linear-gradient(160deg,#526d9a,#1e2d48)}.tw-icon.weather-snow{background:linear-gradient(160deg,#b8d7ef,#58759a)}.tw-icon.weather-storm{background:linear-gradient(160deg,#4a637f,#182235)}.tw-icon.weather-night{background:linear-gradient(160deg,#273c75,#111936)}.tw-title{font-weight:700}.tw-subtitle{font-size:11px;color:#aeb9d8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tw-close{width:30px;height:30px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:24px;line-height:1;cursor:pointer;transition:transform .2s}.tw-close:hover{background:#0003;transform:scale(1.15) rotate(90deg)}.tw-tabs{display:flex;gap:5px;padding:5px;background:color-mix(in srgb,var(--tw-panel-sky) 18%,transparent);border-bottom:1px solid #ffffff33;flex-shrink:0}.tw-tab{flex:1;border:0;border-radius:6px;padding:8px;background:transparent;color:#aeb9d8;font-weight:700;cursor:pointer}.tw-tab.active,.tw-tab:hover{background:#00000026;color:#fff}.tw-content{flex:1;min-height:0;position:relative}.tw-pane{position:absolute;inset:0;overflow-y:auto;padding:15px;display:none;opacity:0;transform:translateY(10px);transition:opacity .3s ease,transform .3s ease;pointer-events:none;touch-action:pan-y}.tw-pane.active{display:block;opacity:1;transform:translateY(0);pointer-events:auto}.tw-grid{display:grid;gap:10px}.tw-card{padding:12px;border:1px solid #ffffff33;border-radius:8px;background:color-mix(in srgb,var(--tw-panel-sky) 24%,transparent)}.tw-hero{display:grid;grid-template-columns:74px 1fr;gap:12px;align-items:center}.tw-weather{width:68px;height:68px;display:grid;place-items:center;border-radius:18px;background:color-mix(in srgb,var(--tw-panel-sky) 30%,transparent)}.tw-time{font-size:30px;font-weight:750}.tw-meta{color:#d2d8e8;font-size:12px}.tw-row{display:flex;justify-content:space-between;gap:10px;align-items:center}.tw-form{display:grid;grid-template-columns:1fr 1fr auto;gap:7px}.tw-form input,.tw-form button{min-height:34px;border:1px solid #ffffff4d;border-radius:7px;background:#080d1b99;color:inherit;padding:6px 9px;font:inherit}.tw-actions{display:flex;flex-wrap:wrap;gap:7px}.tw-action{border:1px solid #ffffff4d;border-radius:7px;padding:7px 9px;background:#ffffff0d;color:inherit;cursor:pointer}.tw-list{display:grid;gap:7px}.tw-list-item{padding:9px;border-radius:7px;background:color-mix(in srgb,var(--tw-panel-sky) 20%,transparent);border-left:3px solid #7c9cff}.tw-location-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}.tw-location{position:relative;min-height:80px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:12px;border:1px solid transparent;border-radius:8px;background:color-mix(in srgb,var(--tw-panel-sky) 30%,transparent);color:#fff;text-align:center;transition:transform .3s,box-shadow .3s}.tw-location:hover{transform:translateY(-5px);border-color:#8c9fb8;box-shadow:0 8px 20px #00000059}.tw-switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid #ffffff33}.tw-switch:first-of-type{border-top:0}.tw-switch input{accent-color:#668fff}.tw-resize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;z-index:10;background:linear-gradient(135deg,transparent 40%,#ffffff4d 40% 60%,transparent 60%),linear-gradient(135deg,transparent 70%,#ffffff4d 70%)}.tw-weather-icon{position:relative;display:inline-block;width:2.5em;height:2.5em;font-size:.5em;color:#e8ecff}.tw-weather-icon .cloud{position:absolute;z-index:1;top:50%;left:50%;width:3.6875em;height:3.6875em;margin:-1.84375em;background:#e2e8f0;border-radius:50%;box-shadow:-2.1875em .6875em 0 -.6875em #e2e8f0,2.0625em .9375em 0 -.9375em #e2e8f0,0 0 0 .375em #fff,-2.1875em .6875em 0 -.3125em #fff,2.0625em .9375em 0 -.5625em #fff}.tw-weather-icon .cloud:after{content:"";position:absolute;bottom:0;left:-.5em;width:4.5625em;height:1em;background:#e2e8f0;box-shadow:0 .4375em 0 -.0625em #fff}.tw-weather-icon .cloud:nth-child(2){z-index:0;background:#fff;opacity:.3;transform:scale(.5) translate(6em,-3em);animation:tw-cloud 4s linear infinite}.tw-weather-icon .sun{position:absolute;top:50%;left:50%;width:2.5em;height:2.5em;margin:-1.25em;border-radius:50%;box-shadow:0 0 0 .375em #fff;animation:tw-spin 12s infinite linear;color:#f7ed47}.tw-weather-icon .rays{position:absolute;top:-2em;left:50%;width:.375em;height:1.125em;margin-left:-.1875em;background:#fff;border-radius:.25em;box-shadow:0 5.375em #fff}.tw-weather-icon .rays:before,.tw-weather-icon .rays:after{content:"";position:absolute;top:0;left:0;width:.375em;height:1.125em;transform:rotate(60deg);transform-origin:50% 3.25em;background:#fff;border-radius:.25em;box-shadow:0 5.375em #fff}.tw-weather-icon .rays:before{transform:rotate(120deg)}.tw-weather-icon .rain,.tw-weather-icon .lightning,.tw-weather-icon .snow{position:absolute;z-index:2;top:50%;left:50%;width:3.75em;height:3.75em;margin:.375em 0 0 -2em}.tw-weather-icon .rain:after{content:"";position:absolute;top:50%;left:50%;width:1.125em;height:1.125em;margin:-1em 0 0 -.25em;background:#0cf;border-radius:100% 0 60% 50% / 60% 0 100% 50%;box-shadow:.625em .875em 0 -.125em #ffffff33,-.875em 1.125em 0 -.125em #ffffff33,-1.375em -.125em 0 #ffffff33;transform:rotate(-28deg);animation:tw-rain 3s linear infinite}.tw-weather-icon .bolt{position:absolute;top:50%;left:50%;margin:-.25em 0 0 -.125em;color:#fff;opacity:.3;animation:tw-lightning 2s linear infinite}.tw-weather-icon .bolt:before,.tw-weather-icon .bolt:after{content:"";position:absolute;z-index:2;top:50%;left:50%;margin:-1.625em 0 0 -1.0125em;border-top:1.25em solid transparent;border-right:.75em solid;border-bottom:.75em solid;border-left:.5em solid transparent;transform:skewX(-10deg)}.tw-weather-icon .bolt:after{margin:-.25em 0 0 -.25em;border-top:.75em solid;border-right:.5em solid transparent;border-bottom:1.25em solid transparent;border-left:.75em solid}.tw-weather-icon .flake:before,.tw-weather-icon .flake:after{content:"\\2744";position:absolute;top:50%;left:50%;margin:-1.025em 0 0 -1.0125em;color:#fff;opacity:.35;animation:tw-spin 8s linear infinite reverse}.tw-weather-icon .flake:after{margin:.125em 0 0 -1em;font-size:1.5em;animation:tw-spin 14s linear infinite}.night-moon .sun{background:#f0e68c;box-shadow:inset .65em -.35em 0 .1em #273c75,0 0 0 .375em #f0e68c88;animation:none}.night-moon .sun:after{content:"";position:absolute;inset:-1.5em;background:radial-gradient(circle at 20% 20%,#fff 0 1px,transparent 2px,transparent 100%);opacity:.8}@keyframes tw-spin{to{transform:rotate(360deg)}}@keyframes tw-cloud{0%{opacity:0}50%{opacity:.3}100%{opacity:0;transform:scale(.5) translate(-200%,-3em)}}@keyframes tw-rain{0%,100%{opacity:.35}50%{opacity:1}}@keyframes tw-lightning{45%,55%{opacity:.2}50%{opacity:1;color:#0cf}}
+:host{display:block;position:relative;min-height:100%;font:14px/1.45 var(--loom-font-family-sans,system-ui,sans-serif);color:var(--loom-color-text,#e8ecff);pointer-events:none}*{box-sizing:border-box}.tw-panel{pointer-events:auto;position:absolute;top:60px;right:20px;width:min(450px,calc(100% - 40px));height:60vh;min-width:280px;min-height:200px;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--loom-color-border,#ffffff3d);border-radius:var(--loom-radius-panel,12px);color:var(--loom-color-text,#e8ecff);background:color-mix(in srgb,var(--tw-panel-sky) 24%,var(--loom-color-surface,#101827) 76%);box-shadow:0 5px 25px #0006;backdrop-filter:blur(18px) saturate(130%);transition:box-shadow .2s ease}.tw-panel.no-glass{backdrop-filter:none;background:color-mix(in srgb,var(--tw-panel-sky) 18%,var(--loom-color-surface,#101827) 82%)}.tw-panel::before{content:"";position:absolute;inset:0;background:var(--tw-panel-sky);opacity:.08;pointer-events:none}.tw-head,.tw-tabs,.tw-content{position:relative;z-index:1}.tw-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 15px;background:color-mix(in srgb,var(--tw-panel-sky) 16%,var(--loom-color-surface-subtle,transparent));border-bottom:1px solid var(--loom-color-divider,#ffffff33);cursor:move;user-select:none;flex-shrink:0}.tw-brand{display:flex;align-items:center;gap:10px;min-width:0}.tw-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:11px;background:color-mix(in srgb,var(--tw-panel-sky) 46%,var(--loom-color-surface-inset,#000));transition:.3s;overflow:hidden}.tw-icon.weather-clear{background:linear-gradient(160deg,#f6c453,#c8792c)}.tw-icon.weather-cloudy{background:linear-gradient(160deg,#7f8c8d,#344052)}.tw-icon.weather-rain{background:linear-gradient(160deg,#526d9a,#1e2d48)}.tw-icon.weather-snow{background:linear-gradient(160deg,#b8d7ef,#58759a)}.tw-icon.weather-storm{background:linear-gradient(160deg,#4a637f,#182235)}.tw-icon.weather-night{background:linear-gradient(160deg,#273c75,#111936)}.tw-title{font-weight:700}.tw-subtitle{font-size:11px;color:var(--loom-color-text-muted,#aeb9d8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tw-close{width:30px;height:30px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:24px;line-height:1;cursor:pointer;transition:transform .2s}.tw-close:hover{background:var(--loom-color-surface-subtle,#0003);transform:scale(1.15) rotate(90deg)}.tw-tabs{display:flex;gap:5px;padding:5px;background:color-mix(in srgb,var(--tw-panel-sky) 12%,var(--loom-color-surface-subtle,transparent));border-bottom:1px solid var(--loom-color-divider,#ffffff33);flex-shrink:0}.tw-tab{flex:1;border:0;border-radius:6px;padding:8px;background:transparent;color:var(--loom-color-text-muted,#aeb9d8);font-weight:700;cursor:pointer}.tw-tab.active,.tw-tab:hover{background:var(--loom-color-accent-soft,#00000026);color:var(--loom-color-text,#fff)}.tw-content{flex:1;min-height:0;position:relative}.tw-pane{position:absolute;inset:0;overflow-y:auto;padding:15px;display:none;opacity:0;transform:translateY(10px);transition:opacity .3s ease,transform .3s ease;pointer-events:none;touch-action:pan-y}.tw-pane.active{display:block;opacity:1;transform:translateY(0);pointer-events:auto}.tw-grid{display:grid;gap:10px}.tw-card{padding:12px;border:1px solid var(--loom-color-border,#ffffff33);border-radius:8px;background:color-mix(in srgb,var(--tw-panel-sky) 14%,var(--loom-color-surface-subtle,transparent))}.tw-hero{display:grid;grid-template-columns:74px 1fr;gap:12px;align-items:center}.tw-weather{width:68px;height:68px;display:grid;place-items:center;border-radius:18px;background:color-mix(in srgb,var(--tw-panel-sky) 20%,var(--loom-color-surface-subtle,transparent))}.tw-time{font-size:30px;font-weight:750}.tw-meta{color:var(--loom-color-text-muted,#d2d8e8);font-size:12px}.tw-row{display:flex;justify-content:space-between;gap:10px;align-items:center}.tw-form{display:grid;grid-template-columns:1fr 1fr auto;gap:7px}.tw-form input,.tw-form button{min-height:34px;border:1px solid var(--loom-color-border-strong,#ffffff4d);border-radius:7px;background:var(--loom-color-surface-inset,#080d1b99);color:inherit;padding:6px 9px;font:inherit}.tw-actions{display:flex;flex-wrap:wrap;gap:7px}.tw-action{border:1px solid var(--loom-color-border-strong,#ffffff4d);border-radius:7px;padding:7px 9px;background:var(--loom-color-surface-subtle,#ffffff0d);color:inherit;cursor:pointer}.tw-list{display:grid;gap:7px}.tw-list-item{padding:9px;border-radius:7px;background:color-mix(in srgb,var(--tw-panel-sky) 14%,var(--loom-color-surface-subtle,transparent));border-left:3px solid var(--loom-color-accent,#7c9cff)}.tw-location-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}.tw-location{position:relative;min-height:80px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:12px;border:1px solid transparent;border-radius:8px;background:color-mix(in srgb,var(--tw-panel-sky) 20%,var(--loom-color-surface-subtle,transparent));color:var(--loom-color-text,#fff);text-align:center;transition:transform .3s,box-shadow .3s}.tw-location:hover{transform:translateY(-5px);border-color:var(--loom-color-border-strong,#8c9fb8);box-shadow:0 8px 20px #00000033}.tw-switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--loom-color-divider,#ffffff33)}.tw-switch:first-of-type{border-top:0}.tw-switch input{accent-color:var(--loom-color-accent,#668fff)}.tw-resize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;z-index:10;background:linear-gradient(135deg,transparent 40%,var(--loom-color-border,#ffffff4d) 40% 60%,transparent 60%),linear-gradient(135deg,transparent 70%,var(--loom-color-border,#ffffff4d) 70%)}.tw-weather-icon{position:relative;display:inline-block;width:2.5em;height:2.5em;font-size:.5em;color:var(--loom-color-text,#e8ecff)}.tw-weather-icon .cloud{position:absolute;z-index:1;top:50%;left:50%;width:3.6875em;height:3.6875em;margin:-1.84375em;background:#e2e8f0;border-radius:50%;box-shadow:-2.1875em .6875em 0 -.6875em #e2e8f0,2.0625em .9375em 0 -.9375em #e2e8f0,0 0 0 .375em #fff,-2.1875em .6875em 0 -.3125em #fff,2.0625em .9375em 0 -.5625em #fff}.tw-weather-icon .cloud:after{content:"";position:absolute;bottom:0;left:-.5em;width:4.5625em;height:1em;background:#e2e8f0;box-shadow:0 .4375em 0 -.0625em #fff}.tw-weather-icon .cloud:nth-child(2){z-index:0;background:#fff;opacity:.3;transform:scale(.5) translate(6em,-3em);animation:tw-cloud 4s linear infinite}.tw-weather-icon .sun{position:absolute;top:50%;left:50%;width:2.5em;height:2.5em;margin:-1.25em;border-radius:50%;box-shadow:0 0 0 .375em #fff;animation:tw-spin 12s infinite linear;color:#f7ed47}.tw-weather-icon .rays{position:absolute;top:-2em;left:50%;width:.375em;height:1.125em;margin-left:-.1875em;background:#fff;border-radius:.25em;box-shadow:0 5.375em #fff}.tw-weather-icon .rays:before,.tw-weather-icon .rays:after{content:"";position:absolute;top:0;left:0;width:.375em;height:1.125em;transform:rotate(60deg);transform-origin:50% 3.25em;background:#fff;border-radius:.25em;box-shadow:0 5.375em #fff}.tw-weather-icon .rays:before{transform:rotate(120deg)}.tw-weather-icon .rain,.tw-weather-icon .lightning,.tw-weather-icon .snow{position:absolute;z-index:2;top:50%;left:50%;width:3.75em;height:3.75em;margin:.375em 0 0 -2em}.tw-weather-icon .rain:after{content:"";position:absolute;top:50%;left:50%;width:1.125em;height:1.125em;margin:-1em 0 0 -.25em;background:#0cf;border-radius:100% 0 60% 50% / 60% 0 100% 50%;box-shadow:.625em .875em 0 -.125em #ffffff33,-.875em 1.125em 0 -.125em #ffffff33,-1.375em -.125em 0 #ffffff33;transform:rotate(-28deg);animation:tw-rain 3s linear infinite}.tw-weather-icon .bolt{position:absolute;top:50%;left:50%;margin:-.25em 0 0 -.125em;color:#fff;opacity:.3;animation:tw-lightning 2s linear infinite}.tw-weather-icon .bolt:before,.tw-weather-icon .bolt:after{content:"";position:absolute;z-index:2;top:50%;left:50%;margin:-1.625em 0 0 -1.0125em;border-top:1.25em solid transparent;border-right:.75em solid;border-bottom:.75em solid;border-left:.5em solid transparent;transform:skewX(-10deg)}.tw-weather-icon .bolt:after{margin:-.25em 0 0 -.25em;border-top:.75em solid;border-right:.5em solid transparent;border-bottom:1.25em solid transparent;border-left:.75em solid}.tw-weather-icon .flake:before,.tw-weather-icon .flake:after{content:"\\2744";position:absolute;top:50%;left:50%;margin:-1.025em 0 0 -1.0125em;color:#fff;opacity:.35;animation:tw-spin 8s linear infinite reverse}.tw-weather-icon .flake:after{margin:.125em 0 0 -1em;font-size:1.5em;animation:tw-spin 14s linear infinite}.night-moon .sun{background:#f0e68c;box-shadow:inset .65em -.35em 0 .1em #273c75,0 0 0 .375em #f0e68c88;animation:none}.night-moon .sun:after{content:"";position:absolute;inset:-1.5em;background:radial-gradient(circle at 20% 20%,#fff 0 1px,transparent 2px,transparent 100%);opacity:.8}@keyframes tw-spin{to{transform:rotate(360deg)}}@keyframes tw-cloud{0%{opacity:0}50%{opacity:.3}100%{opacity:0;transform:scale(.5) translate(-200%,-3em)}}@keyframes tw-rain{0%,100%{opacity:.35}50%{opacity:1}}@keyframes tw-lightning{45%,55%{opacity:.2}50%{opacity:1;color:#0cf}}
 @media(max-width:600px){.tw-panel{top:8px;right:8px;width:calc(100% - 16px);height:calc(100% - 16px)}.tw-form{grid-template-columns:1fr}.tw-hero{grid-template-columns:60px 1fr}}
 `;
 var stLayoutCss = `
-.tw-state{min-height:100%}.tw-notice{text-align:center;color:#aeb9d8;padding:48px 12px}.tw-status{text-align:center;padding:0 0 6px}.ws-details{display:grid;grid-template-columns:3.75em 1fr auto;align-items:center;gap:15px;padding:10px 15px;color:#e8ecff}.ws-weather-display{width:3.75em;height:3.75em;display:grid;place-items:center}.ws-time-display{display:flex;flex-direction:column;line-height:1}.ws-time-main{font-size:50px;font-weight:300;letter-spacing:0}.ws-time-main span{font-size:22px}.ws-time-secondary{margin-top:5px;color:#aeb9d8}.ws-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px;text-align:right}.ws-summary{font-size:18px;font-weight:600}.ws-date{font-size:14px;color:#aeb9d8}.ws-content-inner{padding:0 15px 15px}.ws-separator{border:0;height:1px;margin:8px 0;background:#ffffff33}.ws-secondary-info{display:flex;flex-wrap:wrap;gap:8px}.ws-info-block{display:flex;align-items:center;gap:8px;flex-grow:1;padding:8px 15px;border:1px solid #ffffff33;border-radius:20px;background:#0003;font-size:13px}.ws-info-block .ws-label{font-weight:700;color:#aeb9d8;white-space:nowrap}.ws-info-block .ws-value{font-size:90%;word-break:break-word}.ws-scene-block{display:block;width:100%;margin-top:8px}.ws-scene-block .ws-value{display:block;margin-top:4px;white-space:pre-wrap}.tw-state-stats{margin-top:12px}.tw-state-stats.tw-card{background:color-mix(in srgb,var(--tw-panel-sky) 20%,transparent)}.tw-map{min-height:100%}.locations_container{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}.location_card{position:relative;min-height:80px;padding:12px;border:1px solid transparent;border-radius:8px;background:#3a3f47;color:#fff;cursor:pointer;text-align:center}.location_name{font-weight:700}.location_echo{position:absolute;top:4px;right:6px;font-size:12px;color:#cbd5e1}.map_action_area{display:flex;justify-content:center;padding-top:15px;margin-top:15px;border-top:1px solid #ffffff33}.go_button{padding:8px 25px;border:0;border-radius:30px;background:#738c82;color:#fff}.go_button.disabled{opacity:.5;background:#4a5568}.settings-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #ffffff33}.settings-item-text{flex:1}.settings-item-text h4{margin:0 0 4px;font-size:1em}.settings-item-text p{margin:0;color:#aeb9d8;font-size:.85em}.theme-list{display:flex;flex-direction:column;gap:12px;padding-bottom:15px}.theme-card{padding:12px;border:2px solid transparent;border-radius:8px;background:#0003}.theme-actions{display:flex;gap:8px;margin-top:10px}.theme-actions button{flex:1;padding:8px;border:0;border-radius:6px;background:#4a5568;color:#fff;cursor:pointer}.toggle-switch{position:relative;width:50px;height:28px}.toggle-switch input{opacity:0;width:0;height:0}.toggle-switch label{position:absolute;inset:0;border-radius:28px;background:#888;cursor:pointer}.toggle-switch label:before{content:"";position:absolute;left:4px;bottom:4px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}.toggle-switch input:checked+label{background:#2196f3}.toggle-switch input:checked+label:before{transform:translateX(22px)}`;
-var stSettingsCss = `.tw-settings-pane>.tw-grid{gap:0}.tw-settings-pane .tw-card{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border:0;border-bottom:1px solid #ffffff33;border-radius:0;background:transparent}.tw-settings-pane .settings-item-text{flex:1;min-width:180px}.tw-settings-pane .settings-item-text h4{margin:0 0 4px;font-size:15px;letter-spacing:.01em}.tw-settings-pane .settings-item-text p{line-height:1.4}.tw-settings-pane .tw-card>.settings-item-text{padding-bottom:4px}.tw-settings-pane .tw-form,.tw-settings-pane .tw-actions,.tw-settings-pane .tw-range{flex-basis:100%}.tw-settings-pane .tw-switch{width:100%;min-height:42px;padding:8px 0}.tw-settings-pane .settings-slider{width:150px;accent-color:#8fb3ff}.tw-settings-pane .settings-select{min-height:32px;border:1px solid #ffffff45;border-radius:7px;background:#080d1b99;color:inherit;padding:5px 8px}.tw-settings-pane .tw-extra-settings{display:grid;gap:0}.tw-settings-pane .tw-extra-settings small{display:block;margin-top:3px;color:#aeb9d8;font-size:12px}.tw-settings-pane .tw-extra-settings .tw-switch:first-child{border-top:0}`;
-var stControlsCss = `.tw-settings-pane .settings-item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #ffffff33}.tw-settings-pane .settings-item small{display:block;margin-top:3px;color:#aeb9d8;font-size:.85em}.settings-slider{width:150px;accent-color:#668fff}.settings-select{min-height:32px;padding:5px 8px;border:1px solid #ffffff4d;border-radius:6px;background:#080d1b99;color:inherit;font:inherit}.tw-weather-scroller-container{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px;padding:8px 4px;border:1px solid #ffffff2b;border-radius:8px;background:#00000024}.tw-weather-scroller-column{min-width:0;max-height:146px;overflow:auto;scrollbar-width:thin}.tw-weather-scroller-list{display:grid;gap:3px;margin:0;padding:0;list-style:none}.tw-weather-scroller-item{width:100%;padding:7px 4px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer}.tw-weather-scroller-item:hover,.tw-weather-scroller-item:focus-visible{background:#ffffff18}.tw-weather-scroller-item.selected{background:#ffffff24;box-shadow:inset 0 0 0 1px #a0c4ff;color:#fff}.tw-weather-scroller-item:active{background:#ffffff2b;transform:scale(.98)}`;
-var stMotionCss = `.tw-panel{max-width:50vw;animation:tw-panel-in .24s ease-out}.tw-content{overflow:visible}.tw-pane{display:block;opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .3s ease,transform .3s ease,visibility 0s linear .3s}.tw-pane.active{opacity:1;visibility:visible;transform:translateY(0);transition-delay:0s}.tw-pane::-webkit-scrollbar{width:8px}.tw-pane::-webkit-scrollbar-track{background:transparent}.tw-pane::-webkit-scrollbar-thumb{border-radius:8px;background:#ffffff35}.tw-pane::-webkit-scrollbar-thumb:hover{background:#ffffff55}.tw-head:active{cursor:grabbing}.tw-tab{font-size:14px}.tw-panel button:focus-visible,.tw-panel input:focus-visible{outline:2px solid #8fb3ff;outline-offset:2px}.tw-header-tabs{display:flex;flex:0 0 auto;gap:3px;padding:0;background:transparent;border:0}.tw-header-tabs .tw-tab{flex:0 0 auto;padding:4px 7px;font-size:12px}.tw-header-tabs .tw-tab.active{background:rgba(255,255,255,.16)}.tw-head .tw-brand{display:flex;flex:1;min-width:0;gap:10px}.tw-head .tw-brand>div:last-child{min-width:0}.tw-head>.tw-close{flex:0 0 30px}.tw-head{min-height:62px}.tw-title,.tw-subtitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ws-time-interact,.ws-weather-interact{cursor:pointer;border-radius:8px;transition:background .2s,transform .2s}.ws-time-interact:hover,.ws-weather-interact:hover{background:#ffffff12;transform:translateY(-1px)}.tw-quick-editor{position:absolute;left:15px;right:15px;top:12px;z-index:8;padding:11px 12px;border:1px solid #ffffff45;border-radius:9px;background:color-mix(in srgb,var(--tw-panel-sky) 70%,#101827);box-shadow:0 10px 26px #0008;backdrop-filter:blur(14px)}.tw-editor-close{border:0;background:transparent;color:inherit;font-size:20px;cursor:pointer}.sub_locations_container{margin-top:10px;padding:12px;border-radius:8px;background:#00000026}.sub_location{min-height:70px;background:color-mix(in srgb,var(--tw-panel-sky) 26%,transparent)}.tw-switch input{appearance:none;width:46px;height:24px;margin:0;border:1px solid #ffffff45;border-radius:999px;background:#00000045;position:relative;cursor:pointer;transition:background .2s,border-color .2s}.tw-switch input::before{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#eef3ff;box-shadow:0 1px 3px #0007;transition:transform .2s}.tw-switch input:checked{background:#668fff;border-color:#9eb8ff}.tw-switch input:checked::before{transform:translateX(22px)}.location_card{background:color-mix(in srgb,var(--tw-panel-sky) 28%,transparent);border-color:#ffffff26;transition:background .2s,border-color .2s,transform .2s,box-shadow .2s}.location_card:hover{background:color-mix(in srgb,var(--tw-panel-sky) 42%,transparent)}.location_card.selected{border-color:#a0c4ff;box-shadow:0 0 12px #a0c4ff;background:color-mix(in srgb,var(--tw-panel-sky) 48%,transparent)}.location_card:active{transform:scale(.98)}.location_card.has-bg{overflow:hidden;text-shadow:1px 1px 3px #000d;background-size:cover;background-position:center}.location_card.has-bg::before{content:"";position:absolute;inset:0;background:#0008;border-radius:8px;transition:background .2s}.location_card.has-bg:hover::before{background:#0004}.location_card>*{position:relative;z-index:1}.travel_time{position:absolute;top:4px;left:6px;font-size:10px;color:#ddd;background:#0008;padding:1px 4px;border-radius:4px}.characters_list{margin-top:5px;font-size:10px;color:#d7deee;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.go_button{position:relative;overflow:hidden}.go_button::after,.location_card::after{content:"";position:absolute;inset:50%;border-radius:50%;background:#ffffff55;transform:translate(-50%,-50%) scale(0);pointer-events:none}.go_button:active::after,.location_card:active::after{animation:tw-ripple .42s ease-out}.tw-close{transition:background .2s,transform .2s,opacity .2s}.tw-close:hover{opacity:1}.tw-close:active{transform:scale(.9)}@media(max-width:420px){.tw-panel{max-width:calc(100vw - 16px)}.ws-details{grid-template-columns:3.75em 1fr;gap:10px}.ws-weather-interact{grid-column:2;align-items:flex-start}.ws-right{align-items:flex-start;text-align:left}.tw-content .tw-pane{padding:12px}.locations_container{grid-template-columns:1fr}.tw-quick-editor{left:12px;right:12px}}@keyframes tw-ripple{to{inset:-120%;opacity:0}}@keyframes tw-panel-in{from{opacity:0;transform:translateY(-6px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}`;
-var stLayersCss = `.tw-theme-layers{position:absolute;inset:0;z-index:0;overflow:hidden;border-radius:12px;pointer-events:none}.tw-bg-layer-1,.tw-bg-layer-2{position:absolute;inset:0;background:var(--tw-panel-sky);background-size:200% 200%;opacity:.34;transition:opacity 9s ease-in-out}.tw-bg-layer-2{opacity:0}.tw-fx-container-local{position:absolute;inset:0;z-index:2;overflow:hidden;border-radius:12px;pointer-events:none}.tw-head,.tw-tabs,.tw-content,.tw-resize{z-index:3}.tw-panel::before{opacity:0}.tw-panel{background:rgba(0,0,0,.12)}.tw-panel.no-glass{background:rgba(0,0,0,.42)}`;
+.tw-state{min-height:100%}.tw-notice{text-align:center;color:var(--loom-color-text-muted,#aeb9d8);padding:48px 12px}.tw-status{text-align:center;padding:0 0 6px}.ws-details{display:grid;grid-template-columns:3.75em 1fr auto;align-items:center;gap:15px;padding:10px 15px;color:var(--loom-color-text,#e8ecff)}.ws-weather-display{width:3.75em;height:3.75em;display:grid;place-items:center}.ws-time-display{display:flex;flex-direction:column;line-height:1}.ws-time-main{font-size:50px;font-weight:300;letter-spacing:0}.ws-time-main span{font-size:22px}.ws-time-secondary{margin-top:5px;color:var(--loom-color-text-muted,#aeb9d8)}.ws-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px;text-align:right}.ws-summary{font-size:18px;font-weight:600}.ws-date{font-size:14px;color:var(--loom-color-text-muted,#aeb9d8)}.ws-content-inner{padding:0 15px 15px}.ws-separator{border:0;height:1px;margin:8px 0;background:var(--loom-color-divider,#ffffff33)}.ws-secondary-info{display:flex;flex-wrap:wrap;gap:8px}.ws-info-block{display:flex;align-items:center;gap:8px;flex-grow:1;padding:8px 15px;border:1px solid var(--loom-color-border,#ffffff33);border-radius:20px;background:var(--loom-color-surface-subtle,#0003);font-size:13px}.ws-info-block .ws-label{font-weight:700;color:var(--loom-color-text-muted,#aeb9d8);white-space:nowrap}.ws-info-block .ws-value{font-size:90%;word-break:break-word}.ws-scene-block{display:block;width:100%;margin-top:8px}.ws-scene-block .ws-value{display:block;margin-top:4px;white-space:pre-wrap}.tw-state-stats{margin-top:12px}.tw-state-stats.tw-card{background:color-mix(in srgb,var(--tw-panel-sky) 14%,var(--loom-color-surface-subtle,transparent))}.tw-map{min-height:100%}.locations_container{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}.location_card{position:relative;min-height:80px;padding:12px;border:1px solid var(--loom-color-border,transparent);border-radius:8px;background:var(--loom-color-surface-muted,#3a3f47);color:var(--loom-color-text,#fff);cursor:pointer;text-align:center}.location_name{font-weight:700}.location_echo{position:absolute;top:4px;right:6px;font-size:12px;color:var(--loom-color-text-muted,#cbd5e1)}.map_action_area{display:flex;justify-content:center;padding-top:15px;margin-top:15px;border-top:1px solid var(--loom-color-divider,#ffffff33)}.go_button{padding:8px 25px;border:0;border-radius:30px;background:var(--loom-color-accent,#738c82);color:var(--loom-color-accent-foreground,#fff)}.go_button.disabled{opacity:.5;background:var(--loom-color-surface-muted,#4a5568)}.settings-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--loom-color-divider,#ffffff33)}.settings-item-text{flex:1}.settings-item-text h4{margin:0 0 4px;font-size:1em}.settings-item-text p{margin:0;color:var(--loom-color-text-muted,#aeb9d8);font-size:.85em}.theme-list{display:flex;flex-direction:column;gap:12px;padding-bottom:15px}.theme-card{padding:12px;border:2px solid transparent;border-radius:8px;background:var(--loom-color-surface-subtle,#0003)}.theme-actions{display:flex;gap:8px;margin-top:10px}.theme-actions button{flex:1;padding:8px;border:0;border-radius:6px;background:var(--loom-color-surface-muted,#4a5568);color:var(--loom-color-text,#fff);cursor:pointer}.toggle-switch{position:relative;width:50px;height:28px}.toggle-switch input{opacity:0;width:0;height:0}.toggle-switch label{position:absolute;inset:0;border-radius:28px;background:#888;cursor:pointer}.toggle-switch label:before{content:"";position:absolute;left:4px;bottom:4px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}.toggle-switch input:checked+label{background:var(--loom-color-accent,#2196f3)}.toggle-switch input:checked+label:before{transform:translateX(22px)}`;
+var stSettingsCss = `.tw-settings-pane>.tw-grid{gap:0}.tw-settings-pane .tw-card{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border:0;border-bottom:1px solid var(--loom-color-divider,#ffffff33);border-radius:0;background:transparent}.tw-settings-pane .settings-item-text{flex:1;min-width:180px}.tw-settings-pane .settings-item-text h4{margin:0 0 4px;font-size:15px;letter-spacing:.01em}.tw-settings-pane .settings-item-text p{line-height:1.4}.tw-settings-pane .tw-card>.settings-item-text{padding-bottom:4px}.tw-settings-pane .tw-form,.tw-settings-pane .tw-actions,.tw-settings-pane .tw-range{flex-basis:100%}.tw-settings-pane .tw-switch{width:100%;min-height:42px;padding:8px 0}.tw-settings-pane .settings-slider{width:150px;accent-color:var(--loom-color-accent,#8fb3ff)}.tw-settings-pane .settings-select{min-height:32px;border:1px solid var(--loom-color-border-strong,#ffffff45);border-radius:7px;background:var(--loom-color-surface-inset,#080d1b99);color:inherit;padding:5px 8px}.tw-settings-pane .tw-extra-settings{display:grid;gap:0}.tw-settings-pane .tw-extra-settings small{display:block;margin-top:3px;color:var(--loom-color-text-muted,#aeb9d8);font-size:12px}.tw-settings-pane .tw-extra-settings .tw-switch:first-child{border-top:0}`;
+var stControlsCss = `.tw-settings-pane .settings-item{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--loom-color-divider,#ffffff33)}.tw-settings-pane .settings-item small{display:block;margin-top:3px;color:var(--loom-color-text-muted,#aeb9d8);font-size:.85em}.settings-slider{width:150px;accent-color:var(--loom-color-accent,#668fff)}.settings-select{min-height:32px;padding:5px 8px;border:1px solid var(--loom-color-border-strong,#ffffff4d);border-radius:6px;background:var(--loom-color-surface-inset,#080d1b99);color:inherit;font:inherit}.tw-weather-scroller-container{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px;padding:8px 4px;border:1px solid var(--loom-color-border,#ffffff2b);border-radius:8px;background:var(--loom-color-surface-subtle,#00000024)}.tw-weather-scroller-column{min-width:0;max-height:146px;overflow:auto;scrollbar-width:thin}.tw-weather-scroller-list{display:grid;gap:3px;margin:0;padding:0;list-style:none}.tw-weather-scroller-item{width:100%;padding:7px 4px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer}.tw-weather-scroller-item:hover,.tw-weather-scroller-item:focus-visible{background:var(--loom-color-accent-soft,#ffffff18)}.tw-weather-scroller-item.selected{background:var(--loom-color-accent-soft,#ffffff24);box-shadow:inset 0 0 0 1px var(--loom-color-accent,#a0c4ff);color:var(--loom-color-text,#fff)}.tw-weather-scroller-item:active{background:var(--loom-color-surface-emphasis,#ffffff2b);transform:scale(.98)}`;
+var stMotionCss = `.tw-panel{max-width:50vw;animation:tw-panel-in .24s ease-out}.tw-content{overflow:visible}.tw-pane{display:block;opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .3s ease,transform .3s ease,visibility 0s linear .3s}.tw-pane.active{opacity:1;visibility:visible;transform:translateY(0);transition-delay:0s}.tw-pane::-webkit-scrollbar{width:8px}.tw-pane::-webkit-scrollbar-track{background:transparent}.tw-pane::-webkit-scrollbar-thumb{border-radius:8px;background:var(--loom-color-border,#ffffff35)}.tw-pane::-webkit-scrollbar-thumb:hover{background:var(--loom-color-border-strong,#ffffff55)}.tw-head:active{cursor:grabbing}.tw-tab{font-size:14px}.tw-panel button:focus-visible,.tw-panel input:focus-visible{outline:2px solid var(--loom-color-accent,#8fb3ff);outline-offset:2px}.tw-header-tabs{display:flex;flex:0 0 auto;gap:3px;padding:0;background:transparent;border:0}.tw-header-tabs .tw-tab{flex:0 0 auto;padding:4px 7px;font-size:12px}.tw-header-tabs .tw-tab.active{background:var(--loom-color-accent-soft,rgba(255,255,255,.16))}.tw-head .tw-brand{display:flex;flex:1;min-width:0;gap:10px}.tw-head .tw-brand>div:last-child{min-width:0}.tw-head>.tw-close{flex:0 0 30px}.tw-head{min-height:62px}.tw-title,.tw-subtitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ws-time-interact,.ws-weather-interact{cursor:pointer;border-radius:8px;transition:background .2s,transform .2s}.ws-time-interact:hover,.ws-weather-interact:hover{background:var(--loom-color-surface-subtle,#ffffff12);transform:translateY(-1px)}.tw-quick-editor{position:absolute;left:15px;right:15px;top:12px;z-index:8;padding:11px 12px;border:1px solid var(--loom-color-border-strong,#ffffff45);border-radius:9px;background:color-mix(in srgb,var(--tw-panel-sky) 24%,var(--loom-color-surface,#101827) 76%);box-shadow:0 10px 26px #0006;backdrop-filter:blur(14px)}.tw-editor-close{border:0;background:transparent;color:inherit;font-size:20px;cursor:pointer}.sub_locations_container{margin-top:10px;padding:12px;border-radius:8px;background:var(--loom-color-surface-subtle,#00000026)}.sub_location{min-height:70px;background:color-mix(in srgb,var(--tw-panel-sky) 16%,var(--loom-color-surface-subtle,transparent))}.tw-switch input{appearance:none;width:46px;height:24px;margin:0;border:1px solid var(--loom-color-border-strong,#ffffff45);border-radius:999px;background:var(--loom-color-surface-inset,#00000045);position:relative;cursor:pointer;transition:background .2s,border-color .2s}.tw-switch input::before{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--loom-color-text,#eef3ff);box-shadow:0 1px 3px #0007;transition:transform .2s}.tw-switch input:checked{background:var(--loom-color-accent,#668fff);border-color:var(--loom-color-accent-strong,#9eb8ff)}.tw-switch input:checked::before{transform:translateX(22px)}.location_card{background:color-mix(in srgb,var(--tw-panel-sky) 18%,var(--loom-color-surface-subtle,transparent));border-color:var(--loom-color-border,#ffffff26);transition:background .2s,border-color .2s,transform .2s,box-shadow .2s}.location_card:hover{background:color-mix(in srgb,var(--tw-panel-sky) 28%,var(--loom-color-surface-subtle,transparent))}.location_card.selected{border-color:var(--loom-color-accent,#a0c4ff);box-shadow:0 0 12px var(--loom-color-accent-soft,#a0c4ff);background:color-mix(in srgb,var(--tw-panel-sky) 32%,var(--loom-color-surface-subtle,transparent))}.location_card:active{transform:scale(.98)}.location_card.has-bg{overflow:hidden;text-shadow:1px 1px 3px #000d;background-size:cover;background-position:center}.location_card.has-bg::before{content:"";position:absolute;inset:0;background:#0008;border-radius:8px;transition:background .2s}.location_card.has-bg:hover::before{background:#0004}.location_card>*{position:relative;z-index:1}.travel_time{position:absolute;top:4px;left:6px;font-size:10px;color:#ddd;background:#0008;padding:1px 4px;border-radius:4px}.characters_list{margin-top:5px;font-size:10px;color:var(--loom-color-text-muted,#d7deee);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.go_button{position:relative;overflow:hidden}.go_button::after,.location_card::after{content:"";position:absolute;inset:50%;border-radius:50%;background:#ffffff55;transform:translate(-50%,-50%) scale(0);pointer-events:none}.go_button:active::after,.location_card:active::after{animation:tw-ripple .42s ease-out}.tw-close{transition:background .2s,transform .2s,opacity .2s}.tw-close:hover{opacity:1}.tw-close:active{transform:scale(.9)}@media(max-width:420px){.tw-panel{max-width:calc(100vw - 16px)}.ws-details{grid-template-columns:3.75em 1fr;gap:10px}.ws-weather-interact{grid-column:2;align-items:flex-start}.ws-right{align-items:flex-start;text-align:left}.tw-content .tw-pane{padding:12px}.locations_container{grid-template-columns:1fr}.tw-quick-editor{left:12px;right:12px}}@keyframes tw-ripple{to{inset:-120%;opacity:0}}@keyframes tw-panel-in{from{opacity:0;transform:translateY(-6px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}`;
+var stLayersCss = `.tw-theme-layers{position:absolute;inset:0;z-index:0;overflow:hidden;border-radius:var(--loom-radius-panel,12px);pointer-events:none}.tw-bg-layer-1,.tw-bg-layer-2{position:absolute;inset:0;background:var(--tw-panel-sky);background-size:200% 200%;opacity:.18;transition:opacity 9s ease-in-out}.tw-bg-layer-2{opacity:0}.tw-fx-container-local{position:absolute;inset:0;z-index:2;overflow:hidden;border-radius:var(--loom-radius-panel,12px);pointer-events:none}.tw-head,.tw-tabs,.tw-content,.tw-resize{z-index:3}.tw-panel::before{opacity:0}.tw-panel{background:color-mix(in srgb,var(--tw-panel-sky) 18%,var(--loom-color-surface,#101827) 82%)}.tw-panel.no-glass{background:color-mix(in srgb,var(--tw-panel-sky) 12%,var(--loom-color-surface,#101827) 88%)}`;
 var contextCss = `
 .tw-context{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;font-size:12px}
-.tw-context dt{color:#aeb9d8}.tw-context dd{margin:0;overflow-wrap:anywhere}
+.tw-context dt{color:var(--loom-color-text-muted,#aeb9d8)}.tw-context dd{margin:0;overflow-wrap:anywhere}
 .tw-panel{max-width:calc(100% - 16px);max-height:calc(100% - 76px)}
 .tw-settings-pane .settings-item{flex-wrap:wrap}.tw-settings-pane select{max-width:100%}
 .location_name,.ws-summary,.ws-date{overflow-wrap:anywhere}
-.tw-panel select:focus-visible{outline:2px solid #8fb3ff;outline-offset:2px}
+.tw-panel select:focus-visible{outline:2px solid var(--loom-color-accent,#8fb3ff);outline-offset:2px}
+.tw-error{color:var(--loom-color-danger,#f87171);font-size:12px;margin:8px 0 0}
 @media(max-width:600px){.tw-panel{max-height:calc(100% - 16px)}}
 `;
 function mountTheWorldPanel(root, context, options) {
@@ -699,20 +706,14 @@ function WorldPanel(props) {
   const weather = describeWorldWeather(result?.state.theWorld);
   const layoutStyle = position.left ? { left: position.left, top: position.top, right: "auto", width: size.width, height: size.height } : { width: size.width, height: size.height };
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("the-world:panel-layout") || "null");
-      if (saved) {
-        setPosition({ left: saved.left, top: saved.top });
-        setSize({ width: saved.width, height: saved.height });
-      }
-    } catch {
-    }
-  }, []);
+    if (!view.panelLayout) return;
+    setPosition({ left: view.panelLayout.left, top: view.panelLayout.top });
+    setSize({ width: view.panelLayout.width, height: view.panelLayout.height });
+  }, [view.panelLayout]);
   const saveLayout = (nextPosition = position, nextSize = size) => {
-    try {
-      localStorage.setItem("the-world:panel-layout", JSON.stringify({ ...nextPosition, ...nextSize }));
-    } catch {
-    }
+    void props.options.setPanelLayout({ ...nextPosition, ...nextSize }).catch((reason) => {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    });
   };
   useEffect(() => () => gesture.current?.(), []);
   async function changePreference(operation) {
@@ -781,7 +782,7 @@ function WorldPanel(props) {
           setSize(size2);
           saveLayout(position2, size2);
         }, children: "\u91CD\u7F6E\u9762\u677F\u4F4D\u7F6E" }),
-        error ? /* @__PURE__ */ jsx("p", { role: "alert", children: error }) : null
+        error ? /* @__PURE__ */ jsx("p", { className: "tw-error", role: "alert", children: error }) : null
       ] })
     ] }),
     /* @__PURE__ */ jsx("div", { className: "tw-resize tw-resize-handle", onPointerDown: (event) => {
@@ -827,20 +828,21 @@ function beginResize(event, panel, position, setSize, saveLayout) {
   event.stopPropagation();
   const rect = panel.getBoundingClientRect();
   const start = { x: event.clientX, y: event.clientY, width: rect.width, height: rect.height };
+  let latest = { width: start.width, height: start.height };
   const move = (next) => {
     const maxWidth = Math.max(280, window.innerWidth - rect.left - 16);
     const maxHeight = Math.max(200, window.innerHeight - rect.top - 16);
-    const size = {
+    latest = {
       width: Math.min(maxWidth, Math.max(280, start.width + next.clientX - start.x)),
       height: Math.min(maxHeight, Math.max(200, start.height + next.clientY - start.y))
     };
-    setSize(size);
-    saveLayout(position, size);
+    setSize(latest);
   };
   const end = () => {
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", end);
     window.removeEventListener("pointercancel", end);
+    saveLayout(position, latest);
   };
   window.addEventListener("pointermove", move);
   window.addEventListener("pointerup", end, { once: true });
@@ -1036,6 +1038,14 @@ ${toggle_button_effects_default}
 }
 
 // src/client/index.js
+var WORKSPACE_SCOPE = { kind: "workspace", key: "workspace" };
+var BACKGROUND_HOST_CSS = ":host{display:block;position:relative;width:100%;height:100%;overflow:hidden;pointer-events:none}";
+function normalizePanelLayout(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const { left, top, width, height } = value;
+  if (![left, top, width, height].every((item) => typeof item === "number" && Number.isFinite(item))) return void 0;
+  return { left, top, width, height };
+}
 function activate(context) {
   context.signal.throwIfAborted();
   const target = context.timeline.target;
@@ -1043,26 +1053,12 @@ function activate(context) {
   const resourceUrl = (path) => context.files.url(path);
   const themeIds = /* @__PURE__ */ new Set(["default", "eternal_night", "legacy"]);
   const toggleButtons = createToggleButtons();
-  const stageHost = document.querySelector('[data-loom-component="shell-background-layer"]');
-  const backgroundLayer = document.createElement("div");
-  backgroundLayer.dataset.theWorldFxLayerBg = "true";
-  const foregroundLayer = document.createElement("div");
-  foregroundLayer.dataset.theWorldFxLayer = "true";
-  for (const layer of [backgroundLayer, foregroundLayer]) {
-    layer.style.cssText = `position:${stageHost ? "absolute" : "fixed"};inset:0;pointer-events:none;overflow:hidden;`;
-  }
-  backgroundLayer.style.zIndex = "0";
-  foregroundLayer.style.zIndex = "2";
-  (stageHost ?? document.body).append(backgroundLayer, foregroundLayer);
-  const clouds = createClouds3dFX(backgroundLayer, resourceUrl("assets/images/cloud.png"));
-  const weatherRenderer = createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds });
-  const particleStyle = document.createElement("style");
-  document.head.append(particleStyle);
   const listeners = /* @__PURE__ */ new Set();
-  let view = { status: "\u6B63\u5728\u8BFB\u53D6\u4E16\u754C\u72B6\u6001", weatherEffectsEnabled: true, themeId: "default" };
+  let view = { status: "\u6B63\u5728\u8BFB\u53D6\u4E16\u754C\u72B6\u6001", weatherEffectsEnabled: true, themeId: "default", panelLayout: void 0 };
   let themeRequest = 0;
   let configRequest = 0;
-  let wallpaper;
+  let weatherEffectsCss = "";
+  let activeBackground;
   let disposed = false;
   const handles = [];
   function publish(patch) {
@@ -1070,61 +1066,78 @@ function activate(context) {
     view = { ...view, ...patch };
     for (const listener of listeners) listener();
   }
-  function releaseWallpaper() {
-    if (!wallpaper) return;
-    const root = document.documentElement;
-    if (root.getAttribute("data-loom-preview-background") === "the-world" && root.style.getPropertyValue("--loom-preview-wallpaper") === wallpaper.applied) {
-      if (wallpaper.previous) root.style.setProperty("--loom-preview-wallpaper", wallpaper.previous);
-      else root.style.removeProperty("--loom-preview-wallpaper");
-      if (wallpaper.attribute === null) root.removeAttribute("data-loom-preview-background");
-      else root.setAttribute("data-loom-preview-background", wallpaper.attribute);
-    }
-    wallpaper = void 0;
-  }
   function renderWeather() {
     if (disposed || context.signal.aborted) return;
     const weather = describeWorldWeather(view.result?.state.theWorld);
     toggleButtons.update(weather.weatherString, weather.period, weather.sky ?? "transparent");
+    if (!activeBackground) return;
     if (!weather.sky || !view.weatherEffectsEnabled) {
-      releaseWallpaper();
-      weatherRenderer.clear();
+      activeBackground.skyBackdrop.style.background = "transparent";
+      activeBackground.weatherRenderer.clear();
       return;
     }
-    const root = document.documentElement;
-    wallpaper ??= {
-      previous: root.style.getPropertyValue("--loom-preview-wallpaper"),
-      attribute: root.getAttribute("data-loom-preview-background")
-    };
-    root.style.setProperty("--loom-preview-wallpaper", weather.sky);
-    wallpaper.applied = root.style.getPropertyValue("--loom-preview-wallpaper");
-    root.setAttribute("data-loom-preview-background", "the-world");
-    weatherRenderer.update({ weatherString: weather.weatherString, periodString: weather.period });
+    activeBackground.skyBackdrop.style.background = weather.sky;
+    activeBackground.weatherRenderer.update({ weatherString: weather.weatherString, periodString: weather.period });
+  }
+  async function applySkyTheme(themeId) {
+    if (!themeIds.has(themeId)) throw new Error("Unknown The World sky theme");
+    const sequence = ++themeRequest;
+    const response = await fetch(resourceUrl(`resources/themes/sky/${themeId}.json`), { signal: context.signal });
+    if (!response.ok) throw new Error(`Theme resource request failed: ${response.status}`);
+    const theme = await response.json();
+    if (disposed || context.signal.aborted || sequence !== themeRequest) return;
+    setSkyTheme(theme);
+    publish({ themeId });
+    renderWeather();
+  }
+  function applyConfigEntries(entries, { partial = false } = {}) {
+    if (disposed || context.signal.aborted) return;
+    configRequest += 1;
+    const patch = {};
+    const effectsEntry = entries.find((entry) => entry.key === "weather-effects-enabled");
+    if (effectsEntry !== void 0) {
+      patch.weatherEffectsEnabled = typeof effectsEntry.value === "boolean" ? effectsEntry.value : true;
+    } else if (!partial) {
+      patch.weatherEffectsEnabled = true;
+    }
+    const layoutEntry = entries.find((entry) => entry.key === "panel-layout");
+    if (layoutEntry !== void 0) {
+      patch.panelLayout = normalizePanelLayout(layoutEntry.value);
+    } else if (!partial) {
+      patch.panelLayout = void 0;
+    }
+    if (Object.keys(patch).length > 0) publish(patch);
+    const themeEntry = entries.find((entry) => entry.key === "sky-theme-id");
+    const nextThemeId = typeof themeEntry?.value === "string" && themeIds.has(themeEntry.value) ? themeEntry.value : !partial ? "default" : void 0;
+    if (nextThemeId && nextThemeId !== view.themeId) {
+      void applySkyTheme(nextThemeId).catch((error) => {
+        if (!disposed && !context.signal.aborted) context.logger.warn("The World sky theme could not be loaded", { error: String(error) });
+      });
+    }
+    renderWeather();
   }
   function dispose() {
     if (disposed) return;
     disposed = true;
     context.signal.removeEventListener("abort", dispose);
+    try {
+      context.renderers.close("official.the-world.background", WORKSPACE_SCOPE);
+    } catch {
+    }
     for (const handle of handles.splice(0).reverse()) void handle.dispose();
     listeners.clear();
     toggleButtons.dispose();
-    weatherRenderer.clear();
-    clouds.dispose();
-    backgroundLayer.remove();
-    foregroundLayer.remove();
-    particleStyle.remove();
-    releaseWallpaper();
+    if (activeBackground) {
+      activeBackground.weatherRenderer.clear();
+      activeBackground.clouds.dispose();
+      activeBackground = void 0;
+    }
+    resetSkyTheme();
   }
   context.signal.addEventListener("abort", dispose, { once: true });
-  function applyConfig(entries) {
-    if (disposed || context.signal.aborted) return;
-    configRequest += 1;
-    const effects = entries.find((entry) => entry.key === "weather-effects-enabled")?.value;
-    publish({ weatherEffectsEnabled: typeof effects === "boolean" ? effects : true });
-    renderWeather();
-  }
   const initialConfigRequest = configRequest;
   void context.configs.list({ scope: { kind: "global" } }).then((entries) => {
-    if (configRequest === initialConfigRequest) applyConfig(entries);
+    if (configRequest === initialConfigRequest) applyConfigEntries(entries);
   }, (error) => {
     if (!disposed && !context.signal.aborted) context.logger.error("The World settings could not be loaded", { error: String(error) });
   });
@@ -1132,25 +1145,72 @@ function activate(context) {
     if (!response.ok) throw new Error(`Weather effects resource request failed: ${response.status}`);
     return response.text();
   }).then((css2) => {
-    if (!disposed && !context.signal.aborted) particleStyle.textContent = css2;
+    if (disposed || context.signal.aborted) return;
+    weatherEffectsCss = css2;
+    if (activeBackground) activeBackground.particleStyle.textContent = `${BACKGROUND_HOST_CSS}
+${weatherEffectsCss}`;
   }).catch((error) => {
     if (!disposed && !context.signal.aborted) context.logger.warn("The World weather effects could not be loaded", { error: String(error) });
   });
   try {
-    handles.push(context.configs.subscribe({ scope: { kind: "global" } }, applyConfig));
+    handles.push(context.configs.subscribe({ scope: { kind: "global" } }, (entries) => applyConfigEntries(entries)));
     handles.push(context.state.subscribe(target, (snapshot) => {
       const root = snapshot.value.theWorld;
       if (root === void 0) {
         publish({ result: void 0, status: "\u5F53\u524D\u5206\u652F\u5C1A\u672A\u521D\u59CB\u5316 The World" });
       } else {
-        validateWorldRoot(root);
-        publish({ result: { revisionId: snapshot.revisionId, state: { theWorld: root } }, status: "" });
+        try {
+          validateWorldRoot(root);
+          publish({ result: { revisionId: snapshot.revisionId, state: { theWorld: root } }, status: "" });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          context.logger.warn("The World state validation failed", { error: message });
+          publish({ result: void 0, status: `\u72B6\u6001\u6821\u9A8C\u5931\u8D25\uFF1A${message}` });
+        }
       }
       renderWeather();
     }, (error) => {
       publish({ result: void 0, status: `\u8BFB\u53D6\u5931\u8D25\uFF1A${error.message}` });
       renderWeather();
     }));
+    handles.push(context.renderers.register({
+      id: "official.the-world.background",
+      name: "The World \u5929\u7A7A\u4E0E\u5929\u6C14\u80CC\u666F",
+      surface: "shell.background",
+      instanceScope: "workspace",
+      adapter: "shadow",
+      fallback: "hidden"
+    }, {
+      mount(root) {
+        root.replaceChildren();
+        const particleStyle = document.createElement("style");
+        particleStyle.textContent = weatherEffectsCss ? `${BACKGROUND_HOST_CSS}
+${weatherEffectsCss}` : BACKGROUND_HOST_CSS;
+        const skyBackdrop = document.createElement("div");
+        skyBackdrop.style.cssText = "position:absolute;inset:0;pointer-events:none;transition:background 0.6s ease;";
+        const backgroundLayer = document.createElement("div");
+        backgroundLayer.dataset.theWorldFxLayerBg = "true";
+        backgroundLayer.style.cssText = "position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0;";
+        const foregroundLayer = document.createElement("div");
+        foregroundLayer.dataset.theWorldFxLayer = "true";
+        foregroundLayer.style.cssText = "position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2;";
+        root.append(particleStyle, skyBackdrop, backgroundLayer, foregroundLayer);
+        const clouds = createClouds3dFX(backgroundLayer, resourceUrl("assets/images/cloud.png"));
+        const weatherRenderer = createWeatherRenderer({ backgroundLayer, foregroundLayer, clouds });
+        const mounted = { particleStyle, skyBackdrop, weatherRenderer, clouds };
+        activeBackground = mounted;
+        renderWeather();
+        return {
+          dispose() {
+            if (activeBackground === mounted) activeBackground = void 0;
+            weatherRenderer.clear();
+            clouds.dispose();
+            root.replaceChildren();
+          }
+        };
+      }
+    }));
+    context.renderers.open("official.the-world.background", { scope: WORKSPACE_SCOPE, replace: true });
     handles.push(context.renderers.register({
       id: "official.the-world.debugger",
       name: "The World \u8C03\u8BD5\u53F0",
@@ -1169,18 +1229,18 @@ function activate(context) {
           async setWeatherEffectsEnabled(enabled) {
             context.signal.throwIfAborted();
             const entry = await context.configs.upsert({ scope: { kind: "global" }, key: "weather-effects-enabled", value: enabled });
-            applyConfig([entry]);
+            applyConfigEntries([entry], { partial: true });
           },
           async setTheme(themeId) {
-            if (!themeIds.has(themeId)) throw new Error("Unknown The World sky theme");
-            const sequence = ++themeRequest;
-            const response = await fetch(resourceUrl(`resources/themes/sky/${themeId}.json`), { signal: context.signal });
-            if (!response.ok) throw new Error(`Theme resource request failed: ${response.status}`);
-            const theme = await response.json();
-            if (disposed || context.signal.aborted || sequence !== themeRequest) return;
-            setSkyTheme(theme);
-            publish({ themeId });
-            renderWeather();
+            context.signal.throwIfAborted();
+            await applySkyTheme(themeId);
+            const entry = await context.configs.upsert({ scope: { kind: "global" }, key: "sky-theme-id", value: themeId });
+            applyConfigEntries([entry], { partial: true });
+          },
+          async setPanelLayout(layout) {
+            context.signal.throwIfAborted();
+            const entry = await context.configs.upsert({ scope: { kind: "global" }, key: "panel-layout", value: layout });
+            applyConfigEntries([entry], { partial: true });
           }
         });
       }
